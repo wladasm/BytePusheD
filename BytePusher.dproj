@@ -47,6 +47,7 @@
 			<DCCReference Include="fmMain.pas">
 				<Form>MainForm</Form>
 			</DCCReference>
+			<DCCReference Include="unVM.pas"/>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
