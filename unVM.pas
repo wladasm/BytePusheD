@@ -13,12 +13,14 @@ type
   TBytePusherVM = class(TObject)
   private
     FMem: array [0..c_BytePusherMemAlloc - 1] of Byte;
+    FScreenBuf: Cardinal;
     procedure ZeroMemory;
     function Get3(AAddr: Cardinal): Cardinal;
   public
     constructor Create;
     destructor Destroy; override;
     procedure CalcNextFrame;
+    function GetScreenBuf: PByte;
   end;
 
 implementation
@@ -63,6 +65,15 @@ function TBytePusherVM.Get3(AAddr: Cardinal): Cardinal;
 begin
   Assert(AAddr < c_BytePusherMemSize);
   Result := (FMem[AAddr] shl 16) or (FMem[AAddr + 1] shl 8) or FMem[AAddr + 2];
+end;
+
+function TBytePusherVM.GetScreenBuf: PByte;
+var
+  lcScr: Cardinal;
+begin
+  lcScr := FMem[5] shl 16;
+  Assert(lcScr < c_BytePusherMemSize);
+  Result := @FMem[lcScr];
 end;
 
 procedure TBytePusherVM.ZeroMemory;

@@ -21,6 +21,7 @@ type
     FScreenPal: array [Byte] of TRGBTriple;
     procedure CreateScreen;
     procedure PreparePalette;
+    procedure UpdateScreen(AVMScreenBuf: PByte);
   public
 
   end;
@@ -140,6 +141,22 @@ begin
     FScreenPal[i].rgbtGreen := lcG * $33;
     FScreenPal[i].rgbtBlue := lcB * $33;
   end;
+end;
+
+procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
+var
+  y, x, i: Integer;
+begin
+  i := 0;
+  // TODO: flat FScreenPixels
+  for y := 0 to c_BytePusherScrHeight - 1 do
+    for x := 0 to c_BytePusherScrWidth - 1 do
+    begin
+      FScreenPixels[y, x] := FScreenPal[(AVMScreenBuf + i)^];
+      Inc(i);
+    end;
+
+  pbScreen.Invalidate;
 end;
 
 end.
