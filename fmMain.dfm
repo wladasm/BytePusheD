@@ -27,4 +27,33 @@ object MainForm: TMainForm
     Anchors = [akLeft, akTop, akRight, akBottom]
     OnPaint = pbScreenPaint
   end
+  object btNextFrame: TButton
+    Left = 280
+    Top = 56
+    Width = 161
+    Height = 33
+    Anchors = [akTop, akRight]
+    Caption = 'Next frame'
+    TabOrder = 1
+    OnClick = btNextFrameClick
+  end
+  object btLoadROM: TButton
+    Left = 280
+    Top = 8
+    Width = 161
+    Height = 33
+    Anchors = [akTop, akRight]
+    Caption = 'Load ROM'
+    TabOrder = 0
+    OnClick = btLoadROMClick
+  end
+  object odROM: TOpenDialog
+    DefaultExt = 'BytePusher'
+    Filter = 
+      'BytePusher ROM files (*.BytePusher)|*.BytePusher|All files (*.*)' +
+      '|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
+    Left = 280
+    Top = 224
+  end
 end

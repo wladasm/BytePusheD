@@ -3,8 +3,8 @@ unit fmMain;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, unVM;
+  Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
+  ExtCtrls, unVM;
 
 type
   PScreenPixels = ^TScreenPixels;
@@ -12,16 +12,23 @@ type
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
+    btNextFrame: TButton;
+    odROM: TOpenDialog;
+    btLoadROM: TButton;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure btNextFrameClick(Sender: TObject);
+    procedure btLoadROMClick(Sender: TObject);
   private
+    FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
     FScreenPixels: PScreenPixels;
     FScreenPal: array [Byte] of TRGBTriple;
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
+    procedure DoVMFrame;
   public
 
   end;
@@ -32,6 +39,17 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure TMainForm.btLoadROMClick(Sender: TObject);
+begin
+  if odROM.Execute then
+    FVM.LoadSnapshot(odROM.FileName);
+end;
+
+procedure TMainForm.btNextFrameClick(Sender: TObject);
+begin
+  DoVMFrame;
+end;
 
 procedure TMainForm.CreateScreen;
 var
@@ -103,8 +121,15 @@ begin
   }
 end;
 
+procedure TMainForm.DoVMFrame;
+begin
+  FVM.CalcNextFrame;
+  UpdateScreen(FVM.GetScreenBuf);
+end;
+
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
+  FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
 end;
@@ -112,6 +137,7 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FScreenBuf.Free;
+  FVM.Free;
 end;
 
 procedure TMainForm.pbScreenPaint(Sender: TObject);

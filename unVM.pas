@@ -13,7 +13,6 @@ type
   TBytePusherVM = class(TObject)
   private
     FMem: array [0..c_BytePusherMemAlloc - 1] of Byte;
-    FScreenBuf: Cardinal;
     procedure ZeroMemory;
     function Get3(AAddr: Cardinal): Cardinal;
   public
@@ -21,9 +20,13 @@ type
     destructor Destroy; override;
     procedure CalcNextFrame;
     function GetScreenBuf: PByte;
+    procedure LoadSnapshot(const AFileName: string);
   end;
 
 implementation
+
+uses
+  Classes, SysUtils;
 
 { TBytePusherVM }
 
@@ -74,6 +77,31 @@ begin
   lcScr := FMem[5] shl 16;
   Assert(lcScr < c_BytePusherMemSize);
   Result := @FMem[lcScr];
+end;
+
+procedure TBytePusherVM.LoadSnapshot(const AFileName: string);
+var
+  lcFile: TFileStream;
+  lcSize: Int64;
+begin
+  try
+    lcFile := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      lcSize := lcFile.Size;
+      if lcSize = 0 then
+        raise Exception.Create('File is empty, nothing to load');
+      if lcSize > c_BytePusherMemSize then
+        raise Exception.Create('File size is too large');
+
+      ZeroMemory;
+      lcFile.ReadBuffer(FMem[0], lcSize);
+    finally
+      lcFile.Free;
+    end;
+  except
+    on E: Exception do
+      raise Exception.Create('Error loading snapshot. ' + E.Message);
+  end;
 end;
 
 procedure TBytePusherVM.ZeroMemory;
