@@ -8,6 +8,7 @@ const
   c_BytePusherMemAlloc = c_BytePusherMemSize + c_BytePusherCmdSize - 1;
   c_BytePusherScrWidth = 256;
   c_BytePusherScrHeight = 256;
+  c_BytePusherFPS = 60;
 
 type
   TBytePusherVM = class(TObject)

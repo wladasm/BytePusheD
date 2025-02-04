@@ -29,12 +29,12 @@ object MainForm: TMainForm
   end
   object btNextFrame: TButton
     Left = 280
-    Top = 56
+    Top = 104
     Width = 161
     Height = 33
     Anchors = [akTop, akRight]
     Caption = 'Next frame'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = btNextFrameClick
   end
   object btLoadROM: TButton
@@ -47,6 +47,29 @@ object MainForm: TMainForm
     TabOrder = 0
     OnClick = btLoadROMClick
   end
+  object btRunStop: TButton
+    Left = 280
+    Top = 55
+    Width = 161
+    Height = 33
+    Anchors = [akTop, akRight]
+    Caption = 'Stop'
+    TabOrder = 1
+    OnClick = btRunStopClick
+  end
+  object stbStatus: TStatusBar
+    Left = 0
+    Top = 260
+    Width = 463
+    Height = 19
+    Panels = <
+      item
+        Width = 50
+      end>
+    ExplicitLeft = 392
+    ExplicitTop = 240
+    ExplicitWidth = 0
+  end
   object odROM: TOpenDialog
     DefaultExt = 'BytePusher'
     Filter = 
@@ -54,6 +77,12 @@ object MainForm: TMainForm
       '|*.*'
     Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 280
+    Top = 224
+  end
+  object tmrVMTick: TTimer
+    Enabled = False
+    OnTimer = tmrVMTickTimer
+    Left = 328
     Top = 224
   end
 end

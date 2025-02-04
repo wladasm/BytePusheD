@@ -4,7 +4,10 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
-  ExtCtrls, unVM;
+  ExtCtrls, ComCtrls, unVM;
+
+const
+  stState = 0;
 
 type
   PScreenPixels = ^TScreenPixels;
@@ -15,20 +18,30 @@ type
     btNextFrame: TButton;
     odROM: TOpenDialog;
     btLoadROM: TButton;
+    tmrVMTick: TTimer;
+    btRunStop: TButton;
+    stbStatus: TStatusBar;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btNextFrameClick(Sender: TObject);
     procedure btLoadROMClick(Sender: TObject);
+    procedure tmrVMTickTimer(Sender: TObject);
+    procedure btRunStopClick(Sender: TObject);
   private
     FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
     FScreenPixels: PScreenPixels;
     FScreenPal: array [Byte] of TRGBTriple;
+    FROMIsLoaded: Boolean;
+    FIsRunning: Boolean;
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
+    procedure SetIsRunning(AIsRunning: Boolean);
     procedure DoVMFrame;
+    procedure UpdateButtons;
+    procedure UpdateStatus(AForceRunning: Boolean = False);
   public
 
   end;
@@ -43,12 +56,27 @@ implementation
 procedure TMainForm.btLoadROMClick(Sender: TObject);
 begin
   if odROM.Execute then
+  begin
     FVM.LoadSnapshot(odROM.FileName);
+    FROMIsLoaded := True;
+    SetIsRunning(True);
+    UpdateButtons;
+    UpdateStatus;
+  end;
 end;
 
 procedure TMainForm.btNextFrameClick(Sender: TObject);
 begin
+  UpdateStatus(True);
   DoVMFrame;
+  UpdateStatus;
+end;
+
+procedure TMainForm.btRunStopClick(Sender: TObject);
+begin
+  SetIsRunning(not FIsRunning);
+  UpdateButtons;
+  UpdateStatus;
 end;
 
 procedure TMainForm.CreateScreen;
@@ -132,6 +160,10 @@ begin
   FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
+  tmrVMTick.Interval := Trunc(1000 / c_BytePusherFPS);
+  SetIsRunning(False);
+  UpdateButtons;
+  UpdateStatus;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
@@ -169,6 +201,28 @@ begin
   end;
 end;
 
+procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
+begin
+  FIsRunning := AIsRunning;
+  tmrVMTick.Enabled := FIsRunning;
+end;
+
+procedure TMainForm.tmrVMTickTimer(Sender: TObject);
+begin
+  DoVMFrame;
+end;
+
+procedure TMainForm.UpdateButtons;
+begin
+  btLoadROM.Enabled := not FIsRunning;
+  btRunStop.Enabled := FROMIsLoaded;
+  if not FROMIsLoaded or FIsRunning then
+    btRunStop.Caption := 'Stop'
+  else
+    btRunStop.Caption := 'Run';
+  btNextFrame.Enabled := FROMIsLoaded and not FIsRunning;
+end;
+
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
 var
   y, x, i: Integer;
@@ -183,6 +237,17 @@ begin
     end;
 
   pbScreen.Invalidate;
+end;
+
+procedure TMainForm.UpdateStatus(AForceRunning: Boolean);
+begin
+  if not FROMIsLoaded then
+    stbStatus.Panels[stState].Text := 'ROM not loaded'
+  else
+    if FIsRunning then
+      stbStatus.Panels[stState].Text := 'Running'
+    else
+      stbStatus.Panels[stState].Text := 'Stopped';
 end;
 
 end.
