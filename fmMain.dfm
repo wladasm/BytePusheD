@@ -64,11 +64,12 @@ object MainForm: TMainForm
     Height = 19
     Panels = <
       item
+        Width = 150
+      end
+      item
         Width = 50
       end>
-    ExplicitLeft = 392
-    ExplicitTop = 240
-    ExplicitWidth = 0
+    ExplicitTop = 262
   end
   object odROM: TOpenDialog
     DefaultExt = 'BytePusher'
@@ -83,6 +84,12 @@ object MainForm: TMainForm
     Enabled = False
     OnTimer = tmrVMTickTimer
     Left = 328
+    Top = 224
+  end
+  object tmrFPS: TTimer
+    Enabled = False
+    OnTimer = tmrFPSTimer
+    Left = 368
     Top = 224
   end
 end

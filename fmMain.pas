@@ -8,6 +8,7 @@ uses
 
 const
   stState = 0;
+  stFPS = 1;
 
 type
   PScreenPixels = ^TScreenPixels;
@@ -21,6 +22,7 @@ type
     tmrVMTick: TTimer;
     btRunStop: TButton;
     stbStatus: TStatusBar;
+    tmrFPS: TTimer;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -28,6 +30,7 @@ type
     procedure btLoadROMClick(Sender: TObject);
     procedure tmrVMTickTimer(Sender: TObject);
     procedure btRunStopClick(Sender: TObject);
+    procedure tmrFPSTimer(Sender: TObject);
   private
     FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
@@ -35,6 +38,7 @@ type
     FScreenPal: array [Byte] of TRGBTriple;
     FROMIsLoaded: Boolean;
     FIsRunning: Boolean;
+    FFrameCount: Integer;
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
@@ -205,11 +209,20 @@ procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
 begin
   FIsRunning := AIsRunning;
   tmrVMTick.Enabled := FIsRunning;
+  tmrFPS.Enabled := FIsRunning;
+  FFrameCount := 0;
+end;
+
+procedure TMainForm.tmrFPSTimer(Sender: TObject);
+begin
+  stbStatus.Panels[stFPS].Text := Format('FPS: %d', [FFrameCount]);
+  FFrameCount := 0;
 end;
 
 procedure TMainForm.tmrVMTickTimer(Sender: TObject);
 begin
   DoVMFrame;
+  Inc(FFrameCount);
 end;
 
 procedure TMainForm.UpdateButtons;
@@ -248,6 +261,9 @@ begin
       stbStatus.Panels[stState].Text := 'Running'
     else
       stbStatus.Panels[stState].Text := 'Stopped';
+
+  if not FIsRunning then
+    stbStatus.Panels[stFPS].Text := '';
 end;
 
 end.
