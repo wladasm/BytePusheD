@@ -39,6 +39,8 @@ type
     FROMIsLoaded: Boolean;
     FIsRunning: Boolean;
     FFrameCount: Integer;
+    FTimerFreq: Int64;
+    FPrevFPSTime: Int64;
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
@@ -165,6 +167,7 @@ begin
   CreateScreen;
   PreparePalette;
   tmrVMTick.Interval := Trunc(1000 / c_BytePusherFPS);
+  QueryPerformanceFrequency(FTimerFreq);
   SetIsRunning(False);
   UpdateButtons;
   UpdateStatus;
@@ -211,12 +214,19 @@ begin
   tmrVMTick.Enabled := FIsRunning;
   tmrFPS.Enabled := FIsRunning;
   FFrameCount := 0;
+  QueryPerformanceCounter(FPrevFPSTime);
 end;
 
 procedure TMainForm.tmrFPSTimer(Sender: TObject);
+var
+  lcTime: Int64;
+  lcFPS: Double;
 begin
-  stbStatus.Panels[stFPS].Text := Format('FPS: %d', [FFrameCount]);
+  QueryPerformanceCounter(lcTime);
+  lcFPS := FFrameCount / ((lcTime - FPrevFPSTime) / FTimerFreq);
+  stbStatus.Panels[stFPS].Text := Format('FPS: %d', [Trunc(lcFPS)]);
   FFrameCount := 0;
+  QueryPerformanceCounter(FPrevFPSTime);
 end;
 
 procedure TMainForm.tmrVMTickTimer(Sender: TObject);

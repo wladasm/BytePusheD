@@ -69,7 +69,6 @@ object MainForm: TMainForm
       item
         Width = 50
       end>
-    ExplicitTop = 262
   end
   object odROM: TOpenDialog
     DefaultExt = 'BytePusher'
