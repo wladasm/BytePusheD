@@ -79,16 +79,15 @@ object MainForm: TMainForm
     Left = 280
     Top = 224
   end
-  object tmrVMTick: TTimer
-    Enabled = False
-    OnTimer = tmrVMTickTimer
-    Left = 328
-    Top = 224
-  end
   object tmrFPS: TTimer
     Enabled = False
     OnTimer = tmrFPSTimer
     Left = 368
+    Top = 224
+  end
+  object ApplicationEvents: TApplicationEvents
+    OnIdle = ApplicationEventsIdle
+    Left = 328
     Top = 224
   end
 end

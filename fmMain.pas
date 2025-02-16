@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
-  ExtCtrls, ComCtrls, unVM;
+  ExtCtrls, ComCtrls, AppEvnts, unVM;
 
 const
   stState = 0;
@@ -19,18 +19,18 @@ type
     btNextFrame: TButton;
     odROM: TOpenDialog;
     btLoadROM: TButton;
-    tmrVMTick: TTimer;
     btRunStop: TButton;
     stbStatus: TStatusBar;
     tmrFPS: TTimer;
+    ApplicationEvents: TApplicationEvents;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btNextFrameClick(Sender: TObject);
     procedure btLoadROMClick(Sender: TObject);
-    procedure tmrVMTickTimer(Sender: TObject);
     procedure btRunStopClick(Sender: TObject);
     procedure tmrFPSTimer(Sender: TObject);
+    procedure ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
   private
     FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
@@ -38,8 +38,11 @@ type
     FScreenPal: array [Byte] of TRGBTriple;
     FROMIsLoaded: Boolean;
     FIsRunning: Boolean;
-    FFrameCount: Integer;
     FTimerFreq: Int64;
+    FFramePeriod: Int64;
+    FFrameTimer: Int64;
+    FFrameCount: Integer;
+    FPrevTime: Int64;
     FPrevFPSTime: Int64;
     procedure CreateScreen;
     procedure PreparePalette;
@@ -58,6 +61,26 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure TMainForm.ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
+var
+  lcCurTime, lcDeltaTime: Int64;
+begin
+  if not FIsRunning then
+    Exit;
+
+  QueryPerformanceCounter(lcCurTime);
+  lcDeltaTime := lcCurTime - FPrevTime;
+  Inc(FFrameTimer, lcDeltaTime);
+  if FFrameTimer >= FFramePeriod then
+  begin
+    Dec(FFrameTimer, FFramePeriod);
+    DoVMFrame;
+    Inc(FFrameCount);
+  end;
+  FPrevTime := lcCurTime;
+  Done := False;
+end;
 
 procedure TMainForm.btLoadROMClick(Sender: TObject);
 begin
@@ -166,8 +189,8 @@ begin
   FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
-  tmrVMTick.Interval := Trunc(1000 / c_BytePusherFPS);
   QueryPerformanceFrequency(FTimerFreq);
+  FFramePeriod := FTimerFreq div c_BytePusherFPS; // 1 / c_BytePusherFPS * FTimerFreq
   SetIsRunning(False);
   UpdateButtons;
   UpdateStatus;
@@ -211,28 +234,26 @@ end;
 procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
 begin
   FIsRunning := AIsRunning;
-  tmrVMTick.Enabled := FIsRunning;
   tmrFPS.Enabled := FIsRunning;
-  FFrameCount := 0;
-  QueryPerformanceCounter(FPrevFPSTime);
+  if FIsRunning then
+  begin
+    FFrameTimer := 0;
+    FFrameCount := 0;
+    QueryPerformanceCounter(FPrevTime);
+    FPrevFPSTime := FPrevTime;
+  end;
 end;
 
 procedure TMainForm.tmrFPSTimer(Sender: TObject);
 var
-  lcTime: Int64;
+  lcCurTime: Int64;
   lcFPS: Double;
 begin
-  QueryPerformanceCounter(lcTime);
-  lcFPS := FFrameCount / ((lcTime - FPrevFPSTime) / FTimerFreq);
+  QueryPerformanceCounter(lcCurTime);
+  lcFPS := FFrameCount / ((lcCurTime - FPrevFPSTime) / FTimerFreq);
   stbStatus.Panels[stFPS].Text := Format('FPS: %d', [Trunc(lcFPS)]);
   FFrameCount := 0;
   QueryPerformanceCounter(FPrevFPSTime);
-end;
-
-procedure TMainForm.tmrVMTickTimer(Sender: TObject);
-begin
-  DoVMFrame;
-  Inc(FFrameCount);
 end;
 
 procedure TMainForm.UpdateButtons;
