@@ -77,7 +77,9 @@ begin
     Dec(FFrameTimer, FFramePeriod);
     DoVMFrame;
     Inc(FFrameCount);
-  end;
+  end
+  else
+    Sleep(1);
   FPrevTime := lcCurTime;
   Done := False;
 end;
