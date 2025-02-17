@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
-  ExtCtrls, ComCtrls, AppEvnts, unVM;
+  ExtCtrls, ComCtrls, AppEvnts, MMSystem, unVM;
 
 const
   stState = 0;
@@ -191,8 +191,12 @@ begin
   FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
+
+  timeBeginPeriod(1); // for more accurate delay on Sleep(1)
+
   QueryPerformanceFrequency(FTimerFreq);
   FFramePeriod := FTimerFreq div c_BytePusherFPS; // 1 / c_BytePusherFPS * FTimerFreq
+
   SetIsRunning(False);
   UpdateButtons;
   UpdateStatus;
@@ -200,6 +204,8 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
+  timeEndPeriod(1);
+
   FScreenBuf.Free;
   FVM.Free;
 end;
