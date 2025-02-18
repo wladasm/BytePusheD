@@ -194,6 +194,11 @@ begin
   SetIsRunning(False);
   UpdateButtons;
   UpdateStatus;
+
+  {$IFDEF DEBUG}
+  if FileExists('ROMs\Sprites.BytePusher') then
+    LoadROM('ROMs\Sprites.BytePusher', True);
+  {$ENDIF}
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
