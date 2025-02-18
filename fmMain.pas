@@ -6,13 +6,10 @@ uses
   Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
   ExtCtrls, ComCtrls, AppEvnts, MMSystem, unVM;
 
-const
-  stState = 0;
-  stFPS = 1;
-
 type
   PScreenPixels = ^TScreenPixels;
   TScreenPixels = array [0..c_BytePusherScrHeight - 1, 0..c_BytePusherScrWidth - 1] of TRGBTriple;
+  TStatusItem = (siState = 0, siFPS);
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
@@ -21,34 +18,37 @@ type
     btLoadROM: TButton;
     btRunStop: TButton;
     stbStatus: TStatusBar;
-    tmrFPS: TTimer;
-    ApplicationEvents: TApplicationEvents;
+    tmrBenchmarks: TTimer;
+    AppEvents: TApplicationEvents;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btNextFrameClick(Sender: TObject);
     procedure btLoadROMClick(Sender: TObject);
     procedure btRunStopClick(Sender: TObject);
-    procedure tmrFPSTimer(Sender: TObject);
-    procedure ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
+    procedure tmrBenchmarksTimer(Sender: TObject);
+    procedure AppEventsIdle(Sender: TObject; var Done: Boolean);
   private
     FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
     FScreenPixels: PScreenPixels;
     FScreenPal: array [Byte] of TRGBTriple;
-    FROMIsLoaded: Boolean;
+    FIsROMLoaded: Boolean;
     FIsRunning: Boolean;
     FTimerFreq: Int64;
     FFramePeriod: Int64;
     FFrameTimer: Int64;
     FFrameCount: Integer;
-    FPrevTime: Int64;
-    FPrevFPSTime: Int64;
+    FPrevFrameTime: Int64;
+    FPrevBenchmarksTime: Int64;
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
-    procedure SetIsRunning(AIsRunning: Boolean);
     procedure DoVMFrame;
+    procedure SetIsRunning(AIsRunning: Boolean);
+    procedure LoadROM(const AFileName: string; ARun: Boolean);
+    procedure SetStatus(AItem: TStatusItem; const AFormat: string;
+      const AArgs: array of const);
     procedure UpdateButtons;
     procedure UpdateStatus(AForceRunning: Boolean = False);
   public
@@ -62,7 +62,7 @@ implementation
 
 {$R *.dfm}
 
-procedure TMainForm.ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
+procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
 var
   lcCurTime, lcDeltaTime: Int64;
 begin
@@ -70,7 +70,7 @@ begin
     Exit;
 
   QueryPerformanceCounter(lcCurTime);
-  lcDeltaTime := lcCurTime - FPrevTime;
+  lcDeltaTime := lcCurTime - FPrevFrameTime;
   Inc(FFrameTimer, lcDeltaTime);
   if FFrameTimer >= FFramePeriod then
   begin
@@ -80,20 +80,14 @@ begin
   end
   else
     Sleep(1);
-  FPrevTime := lcCurTime;
+  FPrevFrameTime := lcCurTime;
   Done := False;
 end;
 
 procedure TMainForm.btLoadROMClick(Sender: TObject);
 begin
   if odROM.Execute then
-  begin
-    FVM.LoadSnapshot(odROM.FileName);
-    FROMIsLoaded := True;
-    SetIsRunning(True);
-    UpdateButtons;
-    UpdateStatus;
-  end;
+    LoadROM(odROM.FileName, True);
 end;
 
 procedure TMainForm.btNextFrameClick(Sender: TObject);
@@ -210,6 +204,15 @@ begin
   FVM.Free;
 end;
 
+procedure TMainForm.LoadROM(const AFileName: string; ARun: Boolean);
+begin
+  FVM.LoadSnapshot(AFileName);
+  FIsROMLoaded := True;
+  SetIsRunning(ARun);
+  UpdateButtons;
+  UpdateStatus;
+end;
+
 procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
   pbScreen.Canvas.StretchDraw(pbScreen.ClientRect, FScreenBuf);
@@ -242,37 +245,43 @@ end;
 procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
 begin
   FIsRunning := AIsRunning;
-  tmrFPS.Enabled := FIsRunning;
+  tmrBenchmarks.Enabled := FIsRunning;
   if FIsRunning then
   begin
     FFrameTimer := 0;
     FFrameCount := 0;
-    QueryPerformanceCounter(FPrevTime);
-    FPrevFPSTime := FPrevTime;
+    QueryPerformanceCounter(FPrevFrameTime);
+    FPrevBenchmarksTime := FPrevFrameTime;
   end;
 end;
 
-procedure TMainForm.tmrFPSTimer(Sender: TObject);
+procedure TMainForm.SetStatus(AItem: TStatusItem; const AFormat: string;
+  const AArgs: array of const);
+begin
+  stbStatus.Panels[Ord(AItem)].Text := Format(AFormat, AArgs);
+end;
+
+procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
 var
   lcCurTime: Int64;
   lcFPS: Double;
 begin
   QueryPerformanceCounter(lcCurTime);
-  lcFPS := FFrameCount / ((lcCurTime - FPrevFPSTime) / FTimerFreq);
-  stbStatus.Panels[stFPS].Text := Format('FPS: %d', [Trunc(lcFPS)]);
+  lcFPS := FFrameCount / ((lcCurTime - FPrevBenchmarksTime) / FTimerFreq);
+  SetStatus(siFPS, 'FPS: %d', [Trunc(lcFPS)]);
   FFrameCount := 0;
-  QueryPerformanceCounter(FPrevFPSTime);
+  QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
 
 procedure TMainForm.UpdateButtons;
 begin
   btLoadROM.Enabled := not FIsRunning;
-  btRunStop.Enabled := FROMIsLoaded;
-  if not FROMIsLoaded or FIsRunning then
+  btRunStop.Enabled := FIsROMLoaded;
+  if not FIsROMLoaded or FIsRunning then
     btRunStop.Caption := 'Stop'
   else
     btRunStop.Caption := 'Run';
-  btNextFrame.Enabled := FROMIsLoaded and not FIsRunning;
+  btNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
 end;
 
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
@@ -293,16 +302,16 @@ end;
 
 procedure TMainForm.UpdateStatus(AForceRunning: Boolean);
 begin
-  if not FROMIsLoaded then
-    stbStatus.Panels[stState].Text := 'ROM not loaded'
+  if not FIsROMLoaded then
+    SetStatus(siState, 'ROM not loaded', [])
   else
-    if FIsRunning then
-      stbStatus.Panels[stState].Text := 'Running'
+    if FIsRunning or AForceRunning then
+      SetStatus(siState, 'Running', [])
     else
-      stbStatus.Panels[stState].Text := 'Stopped';
+      SetStatus(siState, 'Stopped', []);
 
   if not FIsRunning then
-    stbStatus.Panels[stFPS].Text := '';
+    SetStatus(siFPS, '', []);
 end;
 
 end.

@@ -77,17 +77,17 @@ object MainForm: TMainForm
       '|*.*'
     Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 280
-    Top = 224
+    Top = 216
   end
-  object tmrFPS: TTimer
+  object tmrBenchmarks: TTimer
     Enabled = False
-    OnTimer = tmrFPSTimer
-    Left = 368
-    Top = 224
+    OnTimer = tmrBenchmarksTimer
+    Left = 416
+    Top = 216
   end
-  object ApplicationEvents: TApplicationEvents
-    OnIdle = ApplicationEventsIdle
-    Left = 328
-    Top = 224
+  object AppEvents: TApplicationEvents
+    OnIdle = AppEventsIdle
+    Left = 344
+    Top = 216
   end
 end
