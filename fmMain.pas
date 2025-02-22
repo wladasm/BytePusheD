@@ -9,7 +9,7 @@ uses
 type
   PScreenPixels = ^TScreenPixels;
   TScreenPixels = array [0..c_BytePusherScrHeight - 1, 0..c_BytePusherScrWidth - 1] of TRGBTriple;
-  TStatusItem = (siState = 0, siFPS, siCalcTime);
+  TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime);
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
@@ -42,6 +42,7 @@ type
     FPrevFrameTime: Int64;
     FPrevBenchmarksTime: Int64;
     FFrameCalcTime: TStopwatch; // for benchmarks
+    FFrameRenderTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
@@ -191,6 +192,7 @@ begin
   PreparePalette;
 
   FFrameCalcTime := TStopwatch.Create;
+  FFrameRenderTime := TStopwatch.Create;
 
   timeBeginPeriod(1); // for more accurate delay on Sleep(1)
 
@@ -211,6 +213,7 @@ procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   timeEndPeriod(1);
 
+  FFrameRenderTime.Free;
   FFrameCalcTime.Free;
 
   FScreenBuf.Free;
@@ -264,6 +267,7 @@ begin
     FFrameTimer := 0;
     FFrameCount := 0;
     FFrameCalcTime.Reset;
+    FFrameRenderTime.Reset;
     QueryPerformanceCounter(FPrevFrameTime);
     FPrevBenchmarksTime := FPrevFrameTime;
   end;
@@ -278,19 +282,26 @@ end;
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
 var
   lcCurTime: Int64;
-  lcFPS, lcCalcTime: Double;
+  lcFPS, lcCalcTime, lcRenderTime: Double;
 begin
   QueryPerformanceCounter(lcCurTime);
   lcFPS := FFrameCount / ((lcCurTime - FPrevBenchmarksTime) / FTimerFreq);
   SetStatus(siFPS, 'FPS: %d', [Trunc(lcFPS)]);
 
   if FFrameCount > 0 then
-    lcCalcTime := FFrameCalcTime.ElapsedMilliseconds / FFrameCount
-  else
+  begin
+    lcCalcTime := FFrameCalcTime.ElapsedMilliseconds / FFrameCount;
+    lcRenderTime := FFrameRenderTime.ElapsedMilliseconds / FFrameCount;
+  end
+  else begin
     lcCalcTime := 0.0;
+    lcRenderTime := 0.0;
+  end;
   SetStatus(siCalcTime, 'VM: %.2f ms', [lcCalcTime]);
+  SetStatus(siRenderTime, 'Render: %.2f ms', [lcRenderTime]);
 
   FFrameCount := 0;
+  FFrameRenderTime.Restart;
   FFrameCalcTime.Restart;
   QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
@@ -310,6 +321,7 @@ procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
 var
   y, x, i: Integer;
 begin
+  FFrameRenderTime.Start;
   i := 0;
   // TODO: flat FScreenPixels
   for y := 0 to c_BytePusherScrHeight - 1 do
@@ -318,6 +330,7 @@ begin
       FScreenPixels[y, x] := FScreenPal[(AVMScreenBuf + i)^];
       Inc(i);
     end;
+  FFrameRenderTime.Stop;
 
   pbScreen.Invalidate;
 end;
@@ -336,6 +349,7 @@ begin
   begin
     SetStatus(siFPS, '', []);
     SetStatus(siCalcTime, '', []);
+    SetStatus(siRenderTime, '', []);
   end;
 end;
 

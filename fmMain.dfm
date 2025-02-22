@@ -71,6 +71,9 @@ object MainForm: TMainForm
       end
       item
         Width = 80
+      end
+      item
+        Width = 80
       end>
   end
   object odROM: TOpenDialog
