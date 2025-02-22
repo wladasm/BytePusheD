@@ -4,12 +4,12 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
-  ExtCtrls, ComCtrls, AppEvnts, MMSystem, unVM;
+  ExtCtrls, ComCtrls, AppEvnts, MMSystem, unVM, unStopwatch;
 
 type
   PScreenPixels = ^TScreenPixels;
   TScreenPixels = array [0..c_BytePusherScrHeight - 1, 0..c_BytePusherScrWidth - 1] of TRGBTriple;
-  TStatusItem = (siState = 0, siFPS);
+  TStatusItem = (siState = 0, siFPS, siCalcTime);
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
@@ -41,6 +41,7 @@ type
     FFrameCount: Integer;
     FPrevFrameTime: Int64;
     FPrevBenchmarksTime: Int64;
+    FFrameCalcTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
@@ -176,7 +177,10 @@ end;
 
 procedure TMainForm.DoVMFrame;
 begin
+  FFrameCalcTime.Start;
   FVM.CalcNextFrame;
+  FFrameCalcTime.Stop;
+
   UpdateScreen(FVM.GetScreenBuf);
 end;
 
@@ -185,6 +189,8 @@ begin
   FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
+
+  FFrameCalcTime := TStopwatch.Create;
 
   timeBeginPeriod(1); // for more accurate delay on Sleep(1)
 
@@ -204,6 +210,8 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   timeEndPeriod(1);
+
+  FFrameCalcTime.Free;
 
   FScreenBuf.Free;
   FVM.Free;
@@ -255,6 +263,7 @@ begin
   begin
     FFrameTimer := 0;
     FFrameCount := 0;
+    FFrameCalcTime.Reset;
     QueryPerformanceCounter(FPrevFrameTime);
     FPrevBenchmarksTime := FPrevFrameTime;
   end;
@@ -269,12 +278,20 @@ end;
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
 var
   lcCurTime: Int64;
-  lcFPS: Double;
+  lcFPS, lcCalcTime: Double;
 begin
   QueryPerformanceCounter(lcCurTime);
   lcFPS := FFrameCount / ((lcCurTime - FPrevBenchmarksTime) / FTimerFreq);
   SetStatus(siFPS, 'FPS: %d', [Trunc(lcFPS)]);
+
+  if FFrameCount > 0 then
+    lcCalcTime := FFrameCalcTime.ElapsedMilliseconds / FFrameCount
+  else
+    lcCalcTime := 0.0;
+  SetStatus(siCalcTime, 'VM: %.2f ms', [lcCalcTime]);
+
   FFrameCount := 0;
+  FFrameCalcTime.Restart;
   QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
 
@@ -316,7 +333,10 @@ begin
       SetStatus(siState, 'Stopped', []);
 
   if not FIsRunning then
+  begin
     SetStatus(siFPS, '', []);
+    SetStatus(siCalcTime, '', []);
+  end;
 end;
 
 end.

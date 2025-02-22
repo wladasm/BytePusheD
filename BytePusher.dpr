@@ -3,7 +3,8 @@ program BytePusher;
 uses
   Forms,
   fmMain in 'fmMain.pas' {MainForm},
-  unVM in 'unVM.pas';
+  unVM in 'unVM.pas',
+  unStopwatch in 'unStopwatch.pas';
 
 {$R *.res}
 
