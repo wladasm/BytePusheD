@@ -64,16 +64,19 @@ object MainForm: TMainForm
     Height = 19
     Panels = <
       item
-        Width = 150
+        Width = 115
       end
       item
-        Width = 80
+        Width = 50
       end
       item
-        Width = 80
+        Width = 95
       end
       item
-        Width = 80
+        Width = 95
+      end
+      item
+        Width = 95
       end>
   end
   object odROM: TOpenDialog

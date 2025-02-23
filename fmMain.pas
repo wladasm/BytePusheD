@@ -9,7 +9,7 @@ uses
 type
   PScreenPixels = ^TScreenPixels;
   TScreenPixels = array [0..c_BytePusherScrHeight - 1, 0..c_BytePusherScrWidth - 1] of TRGBTriple;
-  TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime);
+  TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime);
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
@@ -43,6 +43,8 @@ type
     FPrevBenchmarksTime: Int64;
     FFrameCalcTime: TStopwatch; // for benchmarks
     FFrameRenderTime: TStopwatch; // for benchmarks
+    FFrameDrawCount: Integer; // for benchmarks
+    FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
@@ -193,6 +195,7 @@ begin
 
   FFrameCalcTime := TStopwatch.Create;
   FFrameRenderTime := TStopwatch.Create;
+  FFrameDrawingTime := TStopwatch.Create;
 
   timeBeginPeriod(1); // for more accurate delay on Sleep(1)
 
@@ -213,6 +216,7 @@ procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   timeEndPeriod(1);
 
+  FFrameDrawingTime.Free;
   FFrameRenderTime.Free;
   FFrameCalcTime.Free;
 
@@ -231,7 +235,14 @@ end;
 
 procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
+  if FIsRunning then
+    FFrameDrawingTime.Start;
   pbScreen.Canvas.StretchDraw(pbScreen.ClientRect, FScreenBuf);
+  if FIsRunning then
+  begin
+    FFrameDrawingTime.Stop;
+    Inc(FFrameDrawCount);
+  end;
 end;
 
 procedure TMainForm.PreparePalette;
@@ -266,8 +277,10 @@ begin
   begin
     FFrameTimer := 0;
     FFrameCount := 0;
+    FFrameDrawCount := 0;
     FFrameCalcTime.Reset;
     FFrameRenderTime.Reset;
+    FFrameDrawingTime.Reset;
     QueryPerformanceCounter(FPrevFrameTime);
     FPrevBenchmarksTime := FPrevFrameTime;
   end;
@@ -282,7 +295,7 @@ end;
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
 var
   lcCurTime: Int64;
-  lcFPS, lcCalcTime, lcRenderTime: Double;
+  lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime: Double;
 begin
   QueryPerformanceCounter(lcCurTime);
   lcFPS := FFrameCount / ((lcCurTime - FPrevBenchmarksTime) / FTimerFreq);
@@ -300,7 +313,15 @@ begin
   SetStatus(siCalcTime, 'VM: %.2f ms', [lcCalcTime]);
   SetStatus(siRenderTime, 'Render: %.2f ms', [lcRenderTime]);
 
+  if FFrameDrawCount > 0 then
+    lcDrawingTime := FFrameDrawingTime.ElapsedMilliseconds / FFrameDrawCount
+  else
+    lcDrawingTime := 0.0;
+  SetStatus(siDrawingTime, 'Draw: %.2f ms', [lcDrawingTime]);
+
   FFrameCount := 0;
+  FFrameDrawCount := 0;
+  FFrameDrawingTime.Restart;
   FFrameRenderTime.Restart;
   FFrameCalcTime.Restart;
   QueryPerformanceCounter(FPrevBenchmarksTime);
@@ -350,6 +371,7 @@ begin
     SetStatus(siFPS, '', []);
     SetStatus(siCalcTime, '', []);
     SetStatus(siRenderTime, '', []);
+    SetStatus(siDrawingTime, '', []);
   end;
 end;
 
