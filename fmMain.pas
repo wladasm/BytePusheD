@@ -312,18 +312,18 @@ begin
   end;
   SetStatus(siCalcTime, 'VM: %.2f ms', [lcCalcTime]);
   SetStatus(siRenderTime, 'Render: %.2f ms', [lcRenderTime]);
+  FFrameCalcTime.Reset;
+  FFrameRenderTime.Reset;
 
   if FFrameDrawCount > 0 then
     lcDrawingTime := FFrameDrawingTime.ElapsedMilliseconds / FFrameDrawCount
   else
     lcDrawingTime := 0.0;
   SetStatus(siDrawingTime, 'Draw: %.2f ms', [lcDrawingTime]);
+  FFrameDrawCount := 0;
+  FFrameDrawingTime.Reset;
 
   FFrameCount := 0;
-  FFrameDrawCount := 0;
-  FFrameDrawingTime.Restart;
-  FFrameRenderTime.Restart;
-  FFrameCalcTime.Restart;
   QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
 
