@@ -17,6 +17,7 @@ type
     procedure Reset;
     procedure Restart;
     function ElapsedMilliseconds: Int64;
+    function ElapsedMillisecondsF: Double;
     function ElapsedTicks: Int64;
     class function StartNew: TStopwatch; static;
   public
@@ -86,6 +87,14 @@ begin
     Result := (FElapsed + (GetTimestamp - FStartTime)) * 1000 div Frequency
   else
     Result := FElapsed * 1000 div Frequency;
+end;
+
+function TStopwatch.ElapsedMillisecondsF: Double;
+begin
+  if FIsRunning then
+    Result := (FElapsed + (GetTimestamp - FStartTime)) * 1000 / Frequency
+  else
+    Result := FElapsed * 1000 / Frequency;
 end;
 
 function TStopwatch.ElapsedTicks: Int64;

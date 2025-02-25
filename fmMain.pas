@@ -189,6 +189,11 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
+  timeBeginPeriod(1); // for more accurate delay on Sleep(1)
+
+  QueryPerformanceFrequency(FTimerFreq);
+  FFramePeriod := FTimerFreq div c_BytePusherFPS; // 1 / c_BytePusherFPS * FTimerFreq
+
   FVM := TBytePusherVM.Create;
   CreateScreen;
   PreparePalette;
@@ -196,11 +201,6 @@ begin
   FFrameCalcTime := TStopwatch.Create;
   FFrameRenderTime := TStopwatch.Create;
   FFrameDrawingTime := TStopwatch.Create;
-
-  timeBeginPeriod(1); // for more accurate delay on Sleep(1)
-
-  QueryPerformanceFrequency(FTimerFreq);
-  FFramePeriod := FTimerFreq div c_BytePusherFPS; // 1 / c_BytePusherFPS * FTimerFreq
 
   SetIsRunning(False);
   UpdateButtons;
@@ -214,14 +214,14 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
-  timeEndPeriod(1);
-
   FFrameDrawingTime.Free;
   FFrameRenderTime.Free;
   FFrameCalcTime.Free;
 
   FScreenBuf.Free;
   FVM.Free;
+
+  timeEndPeriod(1);
 end;
 
 procedure TMainForm.LoadROM(const AFileName: string; ARun: Boolean);
@@ -303,8 +303,8 @@ begin
 
   if FFrameCount > 0 then
   begin
-    lcCalcTime := FFrameCalcTime.ElapsedMilliseconds / FFrameCount;
-    lcRenderTime := FFrameRenderTime.ElapsedMilliseconds / FFrameCount;
+    lcCalcTime := FFrameCalcTime.ElapsedMillisecondsF / FFrameCount;
+    lcRenderTime := FFrameRenderTime.ElapsedMillisecondsF / FFrameCount;
   end
   else begin
     lcCalcTime := 0.0;
@@ -316,7 +316,7 @@ begin
   FFrameRenderTime.Reset;
 
   if FFrameDrawCount > 0 then
-    lcDrawingTime := FFrameDrawingTime.ElapsedMilliseconds / FFrameDrawCount
+    lcDrawingTime := FFrameDrawingTime.ElapsedMillisecondsF / FFrameDrawCount
   else
     lcDrawingTime := 0.0;
   SetStatus(siDrawingTime, 'Draw: %.2f ms', [lcDrawingTime]);
