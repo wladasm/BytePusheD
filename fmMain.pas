@@ -55,6 +55,7 @@ type
       const AArgs: array of const);
     procedure UpdateButtons;
     procedure UpdateStatus(AForceRunning: Boolean = False);
+    procedure UpdateBenchmarks;
   public
 
   end;
@@ -106,6 +107,7 @@ begin
   SetIsRunning(not FIsRunning);
   UpdateButtons;
   UpdateStatus;
+  UpdateBenchmarks;
 end;
 
 procedure TMainForm.CreateScreen;
@@ -205,6 +207,7 @@ begin
   SetIsRunning(False);
   UpdateButtons;
   UpdateStatus;
+  UpdateBenchmarks;
 
   {$IFDEF DEBUG}
   if FileExists('ROMs\Sprites.BytePusher') then
@@ -231,6 +234,7 @@ begin
   SetIsRunning(ARun);
   UpdateButtons;
   UpdateStatus;
+  UpdateBenchmarks;
 end;
 
 procedure TMainForm.pbScreenPaint(Sender: TObject);
@@ -293,10 +297,24 @@ begin
 end;
 
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
+begin
+  UpdateBenchmarks;
+end;
+
+procedure TMainForm.UpdateBenchmarks;
 var
   lcCurTime: Int64;
   lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime: Double;
 begin
+  if not FIsRunning then
+  begin
+    SetStatus(siFPS, '', []);
+    SetStatus(siCalcTime, '', []);
+    SetStatus(siRenderTime, '', []);
+    SetStatus(siDrawingTime, '', []);
+    Exit;
+  end;
+
   QueryPerformanceCounter(lcCurTime);
   lcFPS := FFrameCount / ((lcCurTime - FPrevBenchmarksTime) / FTimerFreq);
   SetStatus(siFPS, 'FPS: %d', [Trunc(lcFPS)]);
@@ -365,14 +383,6 @@ begin
       SetStatus(siState, 'Running', [])
     else
       SetStatus(siState, 'Stopped', []);
-
-  if not FIsRunning then
-  begin
-    SetStatus(siFPS, '', []);
-    SetStatus(siCalcTime, '', []);
-    SetStatus(siRenderTime, '', []);
-    SetStatus(siDrawingTime, '', []);
-  end;
 end;
 
 end.
