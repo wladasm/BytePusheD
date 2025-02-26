@@ -79,7 +79,7 @@ begin
   Inc(FFrameTimer, lcDeltaTime);
   if FFrameTimer >= FFramePeriod then
   begin
-    Dec(FFrameTimer, FFramePeriod);
+    FFrameTimer := FFrameTimer mod FFramePeriod;
     DoVMFrame;
     Inc(FFrameCount);
   end
