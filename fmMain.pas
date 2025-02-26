@@ -347,12 +347,11 @@ end;
 
 procedure TMainForm.UpdateButtons;
 begin
-  btLoadROM.Enabled := not FIsRunning;
   btRunStop.Enabled := FIsROMLoaded;
-  if not FIsROMLoaded or FIsRunning then
-    btRunStop.Caption := 'Stop'
+  if not FIsRunning then
+    btRunStop.Caption := 'Run'
   else
-    btRunStop.Caption := 'Run';
+    btRunStop.Caption := 'Stop';
   btNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
 end;
 
