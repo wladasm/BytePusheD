@@ -53,6 +53,7 @@ type
     procedure LoadROM(const AFileName: string; ARun: Boolean);
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
       const AArgs: array of const);
+    procedure UpdateFrameIfNeeded(ACanSleep: Boolean);
     procedure UpdateButtons;
     procedure UpdateStatus(AForceRunning: Boolean = False);
     procedure UpdateBenchmarks;
@@ -68,24 +69,8 @@ implementation
 {$R *.dfm}
 
 procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
-var
-  lcCurTime, lcDeltaTime: Int64;
 begin
-  if not FIsRunning then
-    Exit;
-
-  QueryPerformanceCounter(lcCurTime);
-  lcDeltaTime := lcCurTime - FPrevFrameTime;
-  Inc(FFrameTimer, lcDeltaTime);
-  if FFrameTimer >= FFramePeriod then
-  begin
-    FFrameTimer := FFrameTimer mod FFramePeriod;
-    DoVMFrame;
-    Inc(FFrameCount);
-  end
-  else
-    Sleep(1);
-  FPrevFrameTime := lcCurTime;
+  UpdateFrameIfNeeded(True);
   Done := False;
 end;
 
@@ -353,6 +338,28 @@ begin
   else
     btRunStop.Caption := 'Stop';
   btNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
+end;
+
+procedure TMainForm.UpdateFrameIfNeeded(ACanSleep: Boolean);
+var
+  lcCurTime, lcDeltaTime: Int64;
+begin
+  if not FIsRunning then
+    Exit;
+
+  QueryPerformanceCounter(lcCurTime);
+  lcDeltaTime := lcCurTime - FPrevFrameTime;
+  Inc(FFrameTimer, lcDeltaTime);
+  if FFrameTimer >= FFramePeriod then
+  begin
+    FFrameTimer := FFrameTimer mod FFramePeriod;
+    DoVMFrame;
+    Inc(FFrameCount);
+  end
+  else
+    if ACanSleep then
+      Sleep(1);
+  FPrevFrameTime := lcCurTime;
 end;
 
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
