@@ -15,7 +15,6 @@ type
   private
     FMem: array [0..c_BytePusherMemAlloc - 1] of Byte;
     procedure ZeroMemory;
-    function Get3(AAddr: Cardinal): Cardinal;
   public
     constructor Create;
     destructor Destroy; override;
@@ -29,6 +28,12 @@ implementation
 uses
   Classes, SysUtils;
 
+function Get3(AMem: PByte; AAddr: Cardinal): Cardinal; inline;
+begin
+  Assert(AAddr < (c_BytePusherMemAlloc - 2));
+  Result := (AMem[AAddr] shl 16) or (AMem[AAddr + 1] shl 8) or AMem[AAddr + 2];
+end;
+
 { TBytePusherVM }
 
 procedure TBytePusherVM.CalcNextFrame;
@@ -40,15 +45,15 @@ begin
   FMem[0] := 0;
   FMem[1] := 0;
 
-  lcPC := Get3(2);
+  lcPC := Get3(@FMem, 2);
 
   // Addr 5: A value of ZZ means: pixel(XX, YY) is at address ZZYYXX
   // Addr 6: A value of XXYY means: audio sample ZZ is at address XXYYZZ
 
   for i := 1 to 65536 do
   begin
-    FMem[Get3(lcPC + 3)] := FMem[Get3(lcPC)];
-    lcPC := Get3(lcPC + 6);
+    FMem[Get3(@FMem, lcPC + 3)] := FMem[Get3(@FMem, lcPC)];
+    lcPC := Get3(@FMem, lcPC + 6);
   end;
 
   // TODO: play sound
@@ -63,12 +68,6 @@ destructor TBytePusherVM.Destroy;
 begin
 
   inherited;
-end;
-
-function TBytePusherVM.Get3(AAddr: Cardinal): Cardinal;
-begin
-  Assert(AAddr < (c_BytePusherMemAlloc - 2));
-  Result := (FMem[AAddr] shl 16) or (FMem[AAddr + 1] shl 8) or FMem[AAddr + 2];
 end;
 
 function TBytePusherVM.GetScreenBuf: PByte;
