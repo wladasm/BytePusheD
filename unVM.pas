@@ -67,7 +67,7 @@ end;
 
 function TBytePusherVM.Get3(AAddr: Cardinal): Cardinal;
 begin
-  Assert(AAddr < c_BytePusherMemSize);
+  Assert(AAddr < (c_BytePusherMemAlloc - 2));
   Result := (FMem[AAddr] shl 16) or (FMem[AAddr + 1] shl 8) or FMem[AAddr + 2];
 end;
 
