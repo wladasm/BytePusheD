@@ -101,8 +101,6 @@ var
   lcBMI: TBitmapInfo;
   lcBitmap: HBITMAP;
   lcPixels: PScreenPixels;
-  // y, x, yy, xx: Integer;
-  // lcPxl: TRGBTriple;
 begin
   lcDC := GetDC(0);
   if lcDC = 0 then
@@ -128,41 +126,6 @@ begin
   // Remember that all scanlines in DIB (lcPixels) must be aligned on 4 bytes!
   // We have 256*3 bytes per line there, so don't need to think about it.
   FScreenPixels := lcPixels;
-
-  {
-  for y := 0 to c_BytePusherScrHeight - 1 do
-    for x := 0 to c_BytePusherScrWidth - 1 do
-    begin
-      yy := y div 16;
-      xx := x div 16;
-      if yy = 0 then
-      begin
-        lcPxl.rgbtBlue := 255;
-        lcPxl.rgbtGreen := 0;
-        lcPxl.rgbtRed := 0;
-      end
-      else if xx = 0 then
-      begin
-        lcPxl.rgbtBlue := 255;
-        lcPxl.rgbtGreen := 0;
-        lcPxl.rgbtRed := 255;
-      end
-      else if (xx mod 2 = 0) xor (yy mod 2 = 0) then
-      begin
-        lcPxl.rgbtBlue := 0;
-        lcPxl.rgbtGreen := 0;
-        lcPxl.rgbtRed := 255;
-      end
-      else
-      begin
-        lcPxl.rgbtBlue := 0;
-        lcPxl.rgbtGreen := 255;
-        lcPxl.rgbtRed := 0;
-      end;
-
-      FScreenPixels^[y, x] := lcPxl;
-    end;
-  }
 end;
 
 procedure TMainForm.DoVMFrame;
