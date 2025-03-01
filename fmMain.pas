@@ -8,7 +8,8 @@ uses
 
 type
   PScreenPixels = ^TScreenPixels;
-  TScreenPixels = array [0..c_BytePusherScrHeight - 1, 0..c_BytePusherScrWidth - 1] of TRGBTriple;
+  TScreenPixels = array [0..c_BytePusherScrHeight - 1,
+    0..c_BytePusherScrWidth - 1] of Byte;
   TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime);
 
   TMainForm = class(TForm)
@@ -32,7 +33,6 @@ type
     FVM: TBytePusherVM;
     FScreenBuf: TBitmap;
     FScreenPixels: PScreenPixels;
-    FScreenPal: array [Byte] of TRGBTriple;
     FIsROMLoaded: Boolean;
     FIsRunning: Boolean;
     FTimerFreq: Int64;
@@ -46,7 +46,6 @@ type
     FFrameDrawCount: Integer; // for benchmarks
     FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
-    procedure PreparePalette;
     procedure UpdateScreen(AVMScreenBuf: PByte);
     procedure DoVMFrame;
     procedure SetIsRunning(AIsRunning: Boolean);
@@ -96,9 +95,16 @@ begin
 end;
 
 procedure TMainForm.CreateScreen;
+type
+  TMyBitmapInfo = packed record
+    bmiHeader: TBitmapInfoHeader;
+    bmiColors: array[Byte] of TRGBQuad;
+  end;
 var
   lcDC: HDC;
-  lcBMI: TBitmapInfo;
+  lcBMI: TMyBitmapInfo;
+  lcColor: Integer;
+  lcR, lcG, lcB: Byte;
   lcBitmap: HBITMAP;
   lcPixels: PScreenPixels;
 begin
@@ -107,24 +113,53 @@ begin
     RaiseLastOSError;
 
   FillChar(lcBMI, SizeOf(lcBMI), 0);
-  lcBMI.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
-  lcBMI.bmiHeader.biWidth := c_BytePusherScrWidth;
-  lcBMI.bmiHeader.biHeight := -c_BytePusherScrHeight; // the first line is on top
-  lcBMI.bmiHeader.biPlanes := 1;
-  lcBMI.bmiHeader.biBitCount := 24; // R, G, B
-  lcBMI.bmiHeader.biCompression := BI_RGB;
+  with lcBMI.bmiHeader do
+  begin
+    biSize := SizeOf(TBitmapInfoHeader);
+    biWidth := c_BytePusherScrWidth;
+    biHeight := -c_BytePusherScrHeight; // the first line is on top
+    biPlanes := 1;
+    biBitCount := 8; // 8-bit indices in the color table
+    biCompression := BI_RGB;
+  end;
+
+  // create BytePusher's color table
+  for lcColor := 0 to 255 do
+  begin
+    if lcColor < 216 then
+    begin
+      lcR := lcColor div 36;
+      lcG := (lcColor - lcR * 36) div 6;
+      lcB := lcColor mod 6;
+    end
+    else begin
+      lcR := 0;
+      lcG := 0;
+      lcB := 0;
+    end;
+
+    with lcBMI.bmiColors[lcColor] do
+    begin
+      rgbRed := lcR * $33;
+      rgbGreen := lcG * $33;
+      rgbBlue := lcB * $33;
+      // rgbReserved already zeroed
+    end;
+  end;
 
   lcPixels := nil;
-  lcBitmap := CreateDIBSection(lcDC, lcBMI, DIB_RGB_COLORS, Pointer(lcPixels), 0, 0);
+  lcBitmap := CreateDIBSection(lcDC, PBitmapInfo(@lcBMI)^, DIB_RGB_COLORS,
+    Pointer(lcPixels), 0, 0);
   ReleaseDC(0, lcDC);
   if (lcBitmap = 0) or (lcPixels = nil) then
     RaiseLastOSError;
 
-  // TODO: use 8 bit palette instead of RGB values
   FScreenBuf := TBitmap.Create;
   FScreenBuf.Handle := lcBitmap;
+
   // Remember that all scanlines in DIB (lcPixels) must be aligned on 4 bytes!
-  // We have 256*3 bytes per line there, so don't need to think about it.
+  // We have 256 bytes per line there, so don't need to think about it.
+  Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
   FScreenPixels := lcPixels;
 end;
 
@@ -146,7 +181,6 @@ begin
 
   FVM := TBytePusherVM.Create;
   CreateScreen;
-  PreparePalette;
 
   FFrameCalcTime := TStopwatch.Create;
   FFrameRenderTime := TStopwatch.Create;
@@ -194,30 +228,6 @@ begin
   begin
     FFrameDrawingTime.Stop;
     Inc(FFrameDrawCount);
-  end;
-end;
-
-procedure TMainForm.PreparePalette;
-var
-  i: Integer;
-  lcR, lcG, lcB: Byte;
-begin
-  for i := 0 to 255 do
-  begin
-    if i < 216 then
-    begin
-      lcR := i div 36;
-      lcG := (i - lcR * 36) div 6;
-      lcB := i mod 6;
-    end
-    else begin
-      lcR := 0;
-      lcG := 0;
-      lcB := 0;
-    end;
-    FScreenPal[i].rgbtRed := lcR * $33;
-    FScreenPal[i].rgbtGreen := lcG * $33;
-    FScreenPal[i].rgbtBlue := lcB * $33;
   end;
 end;
 
@@ -326,18 +336,10 @@ begin
 end;
 
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
-var
-  y, x, i: Integer;
 begin
   FFrameRenderTime.Start;
-  i := 0;
-  // TODO: flat FScreenPixels
-  for y := 0 to c_BytePusherScrHeight - 1 do
-    for x := 0 to c_BytePusherScrWidth - 1 do
-    begin
-      FScreenPixels[y, x] := FScreenPal[(AVMScreenBuf + i)^];
-      Inc(i);
-    end;
+  Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
+  Move(AVMScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
   FFrameRenderTime.Stop;
 
   pbScreen.Invalidate;
