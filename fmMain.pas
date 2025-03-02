@@ -3,13 +3,19 @@ unit fmMain;
 interface
 
 uses
-  Classes, Forms, Windows, SysUtils, Graphics, Dialogs, Controls, StdCtrls,
-  ExtCtrls, ComCtrls, AppEvnts, MMSystem, unVM, unStopwatch;
+  Classes, Forms, Windows, SysUtils, Dialogs, Controls, StdCtrls, ExtCtrls,
+  ComCtrls, AppEvnts, MMSystem, unVM, unStopwatch;
 
 type
+  TScreenBitmapInfo = packed record
+    bmiHeader: TBitmapInfoHeader;
+    bmiColors: array[Byte] of TRGBQuad;
+  end;
+
   PScreenPixels = ^TScreenPixels;
   TScreenPixels = array [0..c_BytePusherScrHeight - 1,
     0..c_BytePusherScrWidth - 1] of Byte;
+
   TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime);
 
   TMainForm = class(TForm)
@@ -31,7 +37,7 @@ type
     procedure AppEventsIdle(Sender: TObject; var Done: Boolean);
   private
     FVM: TBytePusherVM;
-    FScreenBuf: TBitmap;
+    FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
     FIsROMLoaded: Boolean;
     FIsRunning: Boolean;
@@ -47,6 +53,7 @@ type
     FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure UpdateScreen(AVMScreenBuf: PByte);
+    procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
     procedure SetIsRunning(AIsRunning: Boolean);
     procedure LoadROM(const AFileName: string; ARun: Boolean);
@@ -95,25 +102,12 @@ begin
 end;
 
 procedure TMainForm.CreateScreen;
-type
-  TMyBitmapInfo = packed record
-    bmiHeader: TBitmapInfoHeader;
-    bmiColors: array[Byte] of TRGBQuad;
-  end;
 var
-  lcDC: HDC;
-  lcBMI: TMyBitmapInfo;
   lcColor: Integer;
   lcR, lcG, lcB: Byte;
-  lcBitmap: HBITMAP;
-  lcPixels: PScreenPixels;
 begin
-  lcDC := GetDC(0);
-  if lcDC = 0 then
-    RaiseLastOSError;
-
-  FillChar(lcBMI, SizeOf(lcBMI), 0);
-  with lcBMI.bmiHeader do
+  FillChar(FScreenBitmapInfo, SizeOf(TScreenBitmapInfo), 0);
+  with FScreenBitmapInfo.bmiHeader do
   begin
     biSize := SizeOf(TBitmapInfoHeader);
     biWidth := c_BytePusherScrWidth;
@@ -138,7 +132,7 @@ begin
       lcB := 0;
     end;
 
-    with lcBMI.bmiColors[lcColor] do
+    with FScreenBitmapInfo.bmiColors[lcColor] do
     begin
       rgbRed := lcR * $33;
       rgbGreen := lcG * $33;
@@ -147,20 +141,8 @@ begin
     end;
   end;
 
-  lcPixels := nil;
-  lcBitmap := CreateDIBSection(lcDC, PBitmapInfo(@lcBMI)^, DIB_RGB_COLORS,
-    Pointer(lcPixels), 0, 0);
-  ReleaseDC(0, lcDC);
-  if (lcBitmap = 0) or (lcPixels = nil) then
-    RaiseLastOSError;
-
-  FScreenBuf := TBitmap.Create;
-  FScreenBuf.Handle := lcBitmap;
-
-  // Remember that all scanlines in DIB (lcPixels) must be aligned on 4 bytes!
-  // We have 256 bytes per line there, so don't need to think about it.
-  Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
-  FScreenPixels := lcPixels;
+  New(FScreenPixels);
+  FillChar(FScreenPixels^, SizeOf(TScreenPixels), 0);
 end;
 
 procedure TMainForm.DoVMFrame;
@@ -170,6 +152,14 @@ begin
   FFrameCalcTime.Stop;
 
   UpdateScreen(FVM.GetScreenBuf);
+end;
+
+procedure TMainForm.DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth,
+  ADstHeight: Integer);
+begin
+  StretchDIBits(ADC, ADstX, ADstY, ADstWidth, ADstHeight,
+    0, 0, c_BytePusherScrWidth, c_BytePusherScrHeight,
+      FScreenPixels, PBitmapInfo(@FScreenBitmapInfo)^, DIB_RGB_COLORS, SRCCOPY);
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -203,7 +193,7 @@ begin
   FFrameRenderTime.Free;
   FFrameCalcTime.Free;
 
-  FScreenBuf.Free;
+  Dispose(FScreenPixels);
   FVM.Free;
 
   timeEndPeriod(1);
@@ -223,7 +213,8 @@ procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
   if FIsRunning then
     FFrameDrawingTime.Start;
-  pbScreen.Canvas.StretchDraw(pbScreen.ClientRect, FScreenBuf);
+  DrawScreen(pbScreen.Canvas.Handle, 0, 0, pbScreen.ClientWidth,
+    pbScreen.ClientHeight);
   if FIsRunning then
   begin
     FFrameDrawingTime.Stop;
@@ -338,6 +329,9 @@ end;
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
 begin
   FFrameRenderTime.Start;
+  // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
+  // Since we have 256 bytes per line, this requirement is already met.
+  Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
   Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
   Move(AVMScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
   FFrameRenderTime.Stop;
