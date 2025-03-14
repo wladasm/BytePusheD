@@ -456,7 +456,7 @@ begin
     if FIsRunning or AForceRunning then
       SetStatus(siState, 'Running', [])
     else
-      SetStatus(siState, 'Stopped', []);
+      SetStatus(siState, 'Paused', []);
 end;
 
 end.
