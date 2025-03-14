@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Dialogs, Controls, StdCtrls, ExtCtrls,
-  ComCtrls, AppEvnts, MMSystem, unVM, unStopwatch;
+  ComCtrls, AppEvnts, MMSystem, Menus, ActnList, unVM, unStopwatch;
 
 type
   TScreenBitmapInfo = packed record
@@ -27,6 +27,31 @@ type
     stbStatus: TStatusBar;
     tmrBenchmarks: TTimer;
     AppEvents: TApplicationEvents;
+    MainMenu: TMainMenu;
+    miFile: TMenuItem;
+    miOpen: TMenuItem;
+    miSeparator1: TMenuItem;
+    miExit: TMenuItem;
+    miRun: TMenuItem;
+    miDoRun: TMenuItem;
+    miNextFrame: TMenuItem;
+    miPause: TMenuItem;
+    miReset: TMenuItem;
+    miOptions: TMenuItem;
+    miSound: TMenuItem;
+    miBenchmarks: TMenuItem;
+    miHelp: TMenuItem;
+    miAbout: TMenuItem;
+    ActionList: TActionList;
+    acOpen: TAction;
+    acExit: TAction;
+    acRun: TAction;
+    acNextFrame: TAction;
+    acPause: TAction;
+    acReset: TAction;
+    acSound: TAction;
+    acBenchmarks: TAction;
+    acAbout: TAction;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -35,6 +60,15 @@ type
     procedure btRunStopClick(Sender: TObject);
     procedure tmrBenchmarksTimer(Sender: TObject);
     procedure AppEventsIdle(Sender: TObject; var Done: Boolean);
+    procedure acOpenExecute(Sender: TObject);
+    procedure acExitExecute(Sender: TObject);
+    procedure acRunExecute(Sender: TObject);
+    procedure acNextFrameExecute(Sender: TObject);
+    procedure acPauseExecute(Sender: TObject);
+    procedure acResetExecute(Sender: TObject);
+    procedure acSoundExecute(Sender: TObject);
+    procedure acAboutExecute(Sender: TObject);
+    procedure acBenchmarksExecute(Sender: TObject);
   private
     FVM: TBytePusherVM;
     FScreenBitmapInfo: TScreenBitmapInfo;
@@ -61,6 +95,7 @@ type
       const AArgs: array of const);
     procedure UpdateFrameIfNeeded(ACanSleep: Boolean);
     procedure UpdateButtons;
+    procedure UpdateActions; reintroduce;
     procedure UpdateStatus(AForceRunning: Boolean = False);
     procedure UpdateBenchmarks;
   public
@@ -73,6 +108,69 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure TMainForm.acAboutExecute(Sender: TObject);
+begin
+  { "About..." }
+  // TODO: about dialog
+end;
+
+procedure TMainForm.acBenchmarksExecute(Sender: TObject);
+begin
+  { "Show benchmarks" }
+  // do nothing
+end;
+
+procedure TMainForm.acExitExecute(Sender: TObject);
+begin
+  { "Exit" }
+  Close;
+end;
+
+procedure TMainForm.acNextFrameExecute(Sender: TObject);
+begin
+  { "Next frame" }
+  DoVMFrame;
+end;
+
+procedure TMainForm.acOpenExecute(Sender: TObject);
+begin
+  { "Open..." }
+  if odROM.Execute then
+    LoadROM(odROM.FileName, True);
+end;
+
+procedure TMainForm.acPauseExecute(Sender: TObject);
+begin
+  { "Pause" }
+  SetIsRunning(False);
+  UpdateButtons;
+  UpdateActions;
+  UpdateStatus;
+  UpdateBenchmarks;
+end;
+
+procedure TMainForm.acResetExecute(Sender: TObject);
+begin
+  { "Reset" }
+  // TODO: reset VM
+end;
+
+procedure TMainForm.acRunExecute(Sender: TObject);
+begin
+  { "Run" }
+  SetIsRunning(True);
+  UpdateButtons;
+  UpdateActions;
+  UpdateStatus;
+  UpdateBenchmarks;
+end;
+
+procedure TMainForm.acSoundExecute(Sender: TObject);
+begin
+  { "Play sound" }
+  // do nothing
+end;
 
 procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
 begin
@@ -97,6 +195,7 @@ procedure TMainForm.btRunStopClick(Sender: TObject);
 begin
   SetIsRunning(not FIsRunning);
   UpdateButtons;
+  UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
 end;
@@ -178,6 +277,7 @@ begin
 
   SetIsRunning(False);
   UpdateButtons;
+  UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
 
@@ -205,6 +305,7 @@ begin
   FIsROMLoaded := True;
   SetIsRunning(ARun);
   UpdateButtons;
+  UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
 end;
@@ -248,6 +349,14 @@ end;
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);
 begin
   UpdateBenchmarks;
+end;
+
+procedure TMainForm.UpdateActions;
+begin
+  acRun.Enabled := FIsROMLoaded and not FIsRunning;
+  acNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
+  acPause.Enabled := FIsROMLoaded and FIsRunning;
+  acReset.Enabled := FIsROMLoaded;
 end;
 
 procedure TMainForm.UpdateBenchmarks;
