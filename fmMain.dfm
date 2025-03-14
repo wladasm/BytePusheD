@@ -2,8 +2,8 @@ object MainForm: TMainForm
   Left = 0
   Top = 0
   Caption = 'BytePusher'
-  ClientHeight = 279
-  ClientWidth = 463
+  ClientHeight = 275
+  ClientWidth = 500
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -15,53 +15,12 @@ object MainForm: TMainForm
   Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  DesignSize = (
-    463
-    279)
   PixelsPerInch = 96
   TextHeight = 13
-  object pbScreen: TPaintBox
-    Left = 0
-    Top = 0
-    Width = 256
-    Height = 256
-    Anchors = [akLeft, akTop, akRight, akBottom]
-    OnPaint = pbScreenPaint
-  end
-  object btNextFrame: TButton
-    Left = 280
-    Top = 104
-    Width = 161
-    Height = 33
-    Anchors = [akTop, akRight]
-    Caption = 'Next frame'
-    TabOrder = 2
-    OnClick = btNextFrameClick
-  end
-  object btLoadROM: TButton
-    Left = 280
-    Top = 8
-    Width = 161
-    Height = 33
-    Anchors = [akTop, akRight]
-    Caption = 'Load ROM'
-    TabOrder = 0
-    OnClick = btLoadROMClick
-  end
-  object btRunStop: TButton
-    Left = 280
-    Top = 55
-    Width = 161
-    Height = 33
-    Anchors = [akTop, akRight]
-    Caption = 'Stop'
-    TabOrder = 1
-    OnClick = btRunStopClick
-  end
   object stbStatus: TStatusBar
     Left = 0
-    Top = 260
-    Width = 463
+    Top = 256
+    Width = 500
     Height = 19
     Panels = <
       item
@@ -79,6 +38,76 @@ object MainForm: TMainForm
       item
         Width = 95
       end>
+    ExplicitTop = 260
+    ExplicitWidth = 463
+  end
+  object pnlKeyboard: TPanel
+    Left = 256
+    Top = 0
+    Width = 244
+    Height = 256
+    Align = alRight
+    BevelInner = bvLowered
+    BevelWidth = 2
+    ShowCaption = False
+    TabOrder = 1
+    DesignSize = (
+      244
+      256)
+    object btLoadROM: TButton
+      Left = 43
+      Top = 16
+      Width = 161
+      Height = 33
+      Anchors = [akTop, akRight]
+      Caption = 'Load ROM'
+      TabOrder = 0
+      OnClick = btLoadROMClick
+    end
+    object btNextFrame: TButton
+      Left = 43
+      Top = 112
+      Width = 161
+      Height = 33
+      Anchors = [akTop, akRight]
+      Caption = 'Next frame'
+      TabOrder = 1
+      OnClick = btNextFrameClick
+    end
+    object btRunStop: TButton
+      Left = 43
+      Top = 63
+      Width = 161
+      Height = 33
+      Anchors = [akTop, akRight]
+      Caption = 'Stop'
+      TabOrder = 2
+      OnClick = btRunStopClick
+    end
+  end
+  object pnlScreen: TPanel
+    Left = 0
+    Top = 0
+    Width = 256
+    Height = 256
+    Align = alClient
+    BevelOuter = bvNone
+    Constraints.MinHeight = 256
+    Constraints.MinWidth = 256
+    ShowCaption = False
+    TabOrder = 0
+    OnResize = pnlScreenResize
+    ExplicitLeft = 80
+    ExplicitTop = 144
+    ExplicitWidth = 97
+    ExplicitHeight = 57
+    object pbScreen: TPaintBox
+      Left = 0
+      Top = 0
+      Width = 256
+      Height = 256
+      OnPaint = pbScreenPaint
+    end
   end
   object odROM: TOpenDialog
     DefaultExt = 'BytePusher'
@@ -86,19 +115,19 @@ object MainForm: TMainForm
       'BytePusher ROM files (*.BytePusher)|*.BytePusher|All files (*.*)' +
       '|*.*'
     Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
-    Left = 280
-    Top = 216
+    Left = 16
+    Top = 80
   end
   object tmrBenchmarks: TTimer
     Enabled = False
     OnTimer = tmrBenchmarksTimer
-    Left = 416
-    Top = 216
+    Left = 144
+    Top = 80
   end
   object AppEvents: TApplicationEvents
     OnIdle = AppEventsIdle
-    Left = 344
-    Top = 216
+    Left = 80
+    Top = 80
   end
   object MainMenu: TMainMenu
     Left = 16

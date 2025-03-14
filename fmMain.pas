@@ -20,10 +20,7 @@ type
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
-    btNextFrame: TButton;
     odROM: TOpenDialog;
-    btLoadROM: TButton;
-    btRunStop: TButton;
     stbStatus: TStatusBar;
     tmrBenchmarks: TTimer;
     AppEvents: TApplicationEvents;
@@ -52,6 +49,11 @@ type
     acSound: TAction;
     acBenchmarks: TAction;
     acAbout: TAction;
+    pnlKeyboard: TPanel;
+    btNextFrame: TButton;
+    btLoadROM: TButton;
+    btRunStop: TButton;
+    pnlScreen: TPanel;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -69,6 +71,7 @@ type
     procedure acSoundExecute(Sender: TObject);
     procedure acAboutExecute(Sender: TObject);
     procedure acBenchmarksExecute(Sender: TObject);
+    procedure pnlScreenResize(Sender: TObject);
   private
     FVM: TBytePusherVM;
     FScreenBitmapInfo: TScreenBitmapInfo;
@@ -108,6 +111,9 @@ var
 implementation
 
 {$R *.dfm}
+
+uses
+  Math;
 
 procedure TMainForm.acAboutExecute(Sender: TObject);
 begin
@@ -335,6 +341,17 @@ begin
     FFrameDrawingTime.Stop;
     Inc(FFrameDrawCount);
   end;
+end;
+
+procedure TMainForm.pnlScreenResize(Sender: TObject);
+var
+  lcScrSize: Integer;
+begin
+  lcScrSize := Min(pnlScreen.Width, pnlScreen.Height);
+  pbScreen.Left := (pnlScreen.Width - lcScrSize) div 2;
+  pbScreen.Top := (pnlScreen.Height - lcScrSize) div 2;
+  pbScreen.Width := lcScrSize;
+  pbScreen.Height := lcScrSize;
 end;
 
 procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
