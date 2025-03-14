@@ -118,7 +118,19 @@ end;
 procedure TMainForm.acBenchmarksExecute(Sender: TObject);
 begin
   { "Show benchmarks" }
-  // do nothing
+  if FIsRunning and acBenchmarks.Checked then
+  begin
+    tmrBenchmarks.Enabled := True;
+    FFrameCount := 0;
+    FFrameDrawCount := 0;
+    FFrameCalcTime.Reset;
+    FFrameRenderTime.Reset;
+    FFrameDrawingTime.Reset;
+    QueryPerformanceCounter(FPrevBenchmarksTime);
+  end
+  else
+    tmrBenchmarks.Enabled := False;
+  UpdateBenchmarks;
 end;
 
 procedure TMainForm.acExitExecute(Sender: TObject);
@@ -246,9 +258,11 @@ end;
 
 procedure TMainForm.DoVMFrame;
 begin
-  FFrameCalcTime.Start;
+  if FIsRunning and acBenchmarks.Checked then
+    FFrameCalcTime.Start;
   FVM.CalcNextFrame;
-  FFrameCalcTime.Stop;
+  if FIsRunning and acBenchmarks.Checked then
+    FFrameCalcTime.Stop;
 
   UpdateScreen(FVM.GetScreenBuf);
 end;
@@ -312,11 +326,11 @@ end;
 
 procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
-  if FIsRunning then
+  if FIsRunning and acBenchmarks.Checked then
     FFrameDrawingTime.Start;
   DrawScreen(pbScreen.Canvas.Handle, 0, 0, pbScreen.ClientWidth,
     pbScreen.ClientHeight);
-  if FIsRunning then
+  if FIsRunning and acBenchmarks.Checked then
   begin
     FFrameDrawingTime.Stop;
     Inc(FFrameDrawCount);
@@ -326,7 +340,7 @@ end;
 procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
 begin
   FIsRunning := AIsRunning;
-  tmrBenchmarks.Enabled := FIsRunning;
+  tmrBenchmarks.Enabled := FIsRunning and acBenchmarks.Checked;
   if FIsRunning then
   begin
     FFrameTimer := 0;
@@ -364,7 +378,7 @@ var
   lcCurTime: Int64;
   lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime: Double;
 begin
-  if not FIsRunning then
+  if not FIsRunning or not acBenchmarks.Checked then
   begin
     SetStatus(siFPS, '', []);
     SetStatus(siCalcTime, '', []);
@@ -427,7 +441,8 @@ begin
   begin
     FFrameTimer := FFrameTimer mod FFramePeriod;
     DoVMFrame;
-    Inc(FFrameCount);
+    if acBenchmarks.Checked then
+      Inc(FFrameCount);
   end
   else
     if ACanSleep then
@@ -437,13 +452,15 @@ end;
 
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
 begin
-  FFrameRenderTime.Start;
+  if FIsRunning and acBenchmarks.Checked then
+    FFrameRenderTime.Start;
   // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
   // Since we have 256 bytes per line, this requirement is already met.
   Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
   Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
   Move(AVMScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
-  FFrameRenderTime.Stop;
+  if FIsRunning and acBenchmarks.Checked then
+    FFrameRenderTime.Stop;
 
   pbScreen.Invalidate;
 end;
