@@ -71,6 +71,7 @@ type
     FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
     FIsROMLoaded: Boolean;
+    FLoadedROMPath: string;
     FIsRunning: Boolean;
     FTimerFreq: Int64;
     FFramePeriod: Int64;
@@ -163,7 +164,8 @@ end;
 procedure TMainForm.acResetExecute(Sender: TObject);
 begin
   { "Reset" }
-  // TODO: reset VM
+  LoadROM(FLoadedROMPath, FIsRunning);
+  UpdateScreen(FVM.GetScreenBuf);
 end;
 
 procedure TMainForm.acRunExecute(Sender: TObject);
@@ -291,6 +293,7 @@ procedure TMainForm.LoadROM(const AFileName: string; ARun: Boolean);
 begin
   FVM.LoadSnapshot(AFileName);
   FIsROMLoaded := True;
+  FLoadedROMPath := AFileName;
   SetIsRunning(ARun);
   UpdateActions;
   UpdateStatus;
