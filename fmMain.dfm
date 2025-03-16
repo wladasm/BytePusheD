@@ -38,8 +38,6 @@ object MainForm: TMainForm
       item
         Width = 95
       end>
-    ExplicitTop = 260
-    ExplicitWidth = 463
   end
   object pnlKeyboard: TPanel
     Left = 256
@@ -51,39 +49,6 @@ object MainForm: TMainForm
     BevelWidth = 2
     ShowCaption = False
     TabOrder = 1
-    DesignSize = (
-      244
-      256)
-    object btLoadROM: TButton
-      Left = 43
-      Top = 16
-      Width = 161
-      Height = 33
-      Anchors = [akTop, akRight]
-      Caption = 'Load ROM'
-      TabOrder = 0
-      OnClick = btLoadROMClick
-    end
-    object btNextFrame: TButton
-      Left = 43
-      Top = 112
-      Width = 161
-      Height = 33
-      Anchors = [akTop, akRight]
-      Caption = 'Next frame'
-      TabOrder = 1
-      OnClick = btNextFrameClick
-    end
-    object btRunStop: TButton
-      Left = 43
-      Top = 63
-      Width = 161
-      Height = 33
-      Anchors = [akTop, akRight]
-      Caption = 'Stop'
-      TabOrder = 2
-      OnClick = btRunStopClick
-    end
   end
   object pnlScreen: TPanel
     Left = 0
@@ -97,10 +62,6 @@ object MainForm: TMainForm
     ShowCaption = False
     TabOrder = 0
     OnResize = pnlScreenResize
-    ExplicitLeft = 80
-    ExplicitTop = 144
-    ExplicitWidth = 97
-    ExplicitHeight = 57
     object pbScreen: TPaintBox
       Left = 0
       Top = 0

@@ -50,16 +50,10 @@ type
     acBenchmarks: TAction;
     acAbout: TAction;
     pnlKeyboard: TPanel;
-    btNextFrame: TButton;
-    btLoadROM: TButton;
-    btRunStop: TButton;
     pnlScreen: TPanel;
     procedure pbScreenPaint(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure btNextFrameClick(Sender: TObject);
-    procedure btLoadROMClick(Sender: TObject);
-    procedure btRunStopClick(Sender: TObject);
     procedure tmrBenchmarksTimer(Sender: TObject);
     procedure AppEventsIdle(Sender: TObject; var Done: Boolean);
     procedure acOpenExecute(Sender: TObject);
@@ -97,7 +91,6 @@ type
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
       const AArgs: array of const);
     procedure UpdateFrameIfNeeded(ACanSleep: Boolean);
-    procedure UpdateButtons;
     procedure UpdateActions; reintroduce;
     procedure UpdateStatus(AForceRunning: Boolean = False);
     procedure UpdateBenchmarks;
@@ -162,7 +155,6 @@ procedure TMainForm.acPauseExecute(Sender: TObject);
 begin
   { "Pause" }
   SetIsRunning(False);
-  UpdateButtons;
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
@@ -178,7 +170,6 @@ procedure TMainForm.acRunExecute(Sender: TObject);
 begin
   { "Run" }
   SetIsRunning(True);
-  UpdateButtons;
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
@@ -194,28 +185,6 @@ procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
 begin
   UpdateFrameIfNeeded(True);
   Done := False;
-end;
-
-procedure TMainForm.btLoadROMClick(Sender: TObject);
-begin
-  if odROM.Execute then
-    LoadROM(odROM.FileName, True);
-end;
-
-procedure TMainForm.btNextFrameClick(Sender: TObject);
-begin
-  UpdateStatus(True);
-  DoVMFrame;
-  UpdateStatus;
-end;
-
-procedure TMainForm.btRunStopClick(Sender: TObject);
-begin
-  SetIsRunning(not FIsRunning);
-  UpdateButtons;
-  UpdateActions;
-  UpdateStatus;
-  UpdateBenchmarks;
 end;
 
 procedure TMainForm.CreateScreen;
@@ -296,7 +265,6 @@ begin
   FFrameDrawingTime := TStopwatch.Create;
 
   SetIsRunning(False);
-  UpdateButtons;
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
@@ -324,7 +292,6 @@ begin
   FVM.LoadSnapshot(AFileName);
   FIsROMLoaded := True;
   SetIsRunning(ARun);
-  UpdateButtons;
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
@@ -432,16 +399,6 @@ begin
 
   FFrameCount := 0;
   QueryPerformanceCounter(FPrevBenchmarksTime);
-end;
-
-procedure TMainForm.UpdateButtons;
-begin
-  btRunStop.Enabled := FIsROMLoaded;
-  if not FIsRunning then
-    btRunStop.Caption := 'Run'
-  else
-    btRunStop.Caption := 'Stop';
-  btNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
 end;
 
 procedure TMainForm.UpdateFrameIfNeeded(ACanSleep: Boolean);
