@@ -8,6 +8,9 @@ uses
 
 const
   c_ProgramName = 'BytePusher';
+  c_ProgramVersion = '0.01';
+  c_ProgramYear = '2025';
+  c_ProgramCopyright = 'Dan Peroff';
 
 type
   TScreenBitmapInfo = packed record
@@ -113,9 +116,13 @@ uses
   Math;
 
 procedure TMainForm.acAboutExecute(Sender: TObject);
+var
+  lcText: string;
 begin
   { "About..." }
-  // TODO: about dialog
+  lcText := Format('%s v%s'#13#13'Copyright (c) %s %s',
+    [c_ProgramName, c_ProgramVersion, c_ProgramYear, c_ProgramCopyright]);
+  Application.MessageBox(PChar(lcText), 'About', MB_ICONINFORMATION or MB_OK);
 end;
 
 procedure TMainForm.acBenchmarksExecute(Sender: TObject);
