@@ -49,6 +49,8 @@ object MainForm: TMainForm
     BevelWidth = 2
     ShowCaption = False
     TabOrder = 1
+    ExplicitLeft = 248
+    ExplicitTop = 11
   end
   object pnlScreen: TPanel
     Left = 0
@@ -70,11 +72,11 @@ object MainForm: TMainForm
       OnPaint = pbScreenPaint
     end
   end
-  object odROM: TOpenDialog
+  object odSnapshot: TOpenDialog
     DefaultExt = 'BytePusher'
     Filter = 
-      'BytePusher ROM files (*.BytePusher)|*.BytePusher|All files (*.*)' +
-      '|*.*'
+      'BytePusher snapshot files (*.BytePusher)|*.BytePusher|All files ' +
+      '(*.*)|*.*'
     Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 16
     Top = 80

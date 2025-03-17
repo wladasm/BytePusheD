@@ -23,7 +23,7 @@ type
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
-    odROM: TOpenDialog;
+    odSnapshot: TOpenDialog;
     stbStatus: TStatusBar;
     tmrBenchmarks: TTimer;
     AppEvents: TApplicationEvents;
@@ -73,8 +73,8 @@ type
     FVM: TBytePusherVM;
     FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
-    FIsROMLoaded: Boolean;
-    FLoadedROMPath: string;
+    FIsSnapshotLoaded: Boolean;
+    FLoadedSnapshotPath: string;
     FIsRunning: Boolean;
     FTimerFreq: Int64;
     FFramePeriod: Int64;
@@ -91,7 +91,7 @@ type
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
     procedure SetIsRunning(AIsRunning: Boolean);
-    procedure LoadROM(const AFileName: string; ARun: Boolean);
+    procedure LoadSnapshot(const AFileName: string; ARun: Boolean);
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
       const AArgs: array of const);
     procedure UpdateFrameIfNeeded(ACanSleep: Boolean);
@@ -151,8 +151,8 @@ end;
 procedure TMainForm.acOpenExecute(Sender: TObject);
 begin
   { "Open..." }
-  if odROM.Execute then
-    LoadROM(odROM.FileName, True);
+  if odSnapshot.Execute then
+    LoadSnapshot(odSnapshot.FileName, True);
 end;
 
 procedure TMainForm.acPauseExecute(Sender: TObject);
@@ -167,7 +167,7 @@ end;
 procedure TMainForm.acResetExecute(Sender: TObject);
 begin
   { "Reset" }
-  LoadROM(FLoadedROMPath, FIsRunning);
+  LoadSnapshot(FLoadedSnapshotPath, FIsRunning);
   UpdateScreen(FVM.GetScreenBuf);
 end;
 
@@ -277,8 +277,8 @@ begin
   UpdateBenchmarks;
 
   {$IFDEF DEBUG}
-  if FileExists('ROMs\Sprites.BytePusher') then
-    LoadROM('ROMs\Sprites.BytePusher', True);
+  if FileExists('Snapshots\Sprites.BytePusher') then
+    LoadSnapshot('Snapshots\Sprites.BytePusher', True);
   {$ENDIF}
 end;
 
@@ -294,12 +294,12 @@ begin
   timeEndPeriod(1);
 end;
 
-procedure TMainForm.LoadROM(const AFileName: string; ARun: Boolean);
+procedure TMainForm.LoadSnapshot(const AFileName: string; ARun: Boolean);
 begin
   FVM.LoadSnapshot(AFileName);
-  FIsROMLoaded := True;
-  FLoadedROMPath := AFileName;
-  Caption := Format('%s - %s', [ExtractFileName(FLoadedROMPath), c_ProgramName]);
+  FIsSnapshotLoaded := True;
+  FLoadedSnapshotPath := AFileName;
+  Caption := Format('%s - %s', [ExtractFileName(FLoadedSnapshotPath), c_ProgramName]);
   SetIsRunning(ARun);
   UpdateActions;
   UpdateStatus;
@@ -360,10 +360,10 @@ end;
 
 procedure TMainForm.UpdateActions;
 begin
-  acRun.Enabled := FIsROMLoaded and not FIsRunning;
-  acNextFrame.Enabled := FIsROMLoaded and not FIsRunning;
-  acPause.Enabled := FIsROMLoaded and FIsRunning;
-  acReset.Enabled := FIsROMLoaded;
+  acRun.Enabled := FIsSnapshotLoaded and not FIsRunning;
+  acNextFrame.Enabled := FIsSnapshotLoaded and not FIsRunning;
+  acPause.Enabled := FIsSnapshotLoaded and FIsRunning;
+  acReset.Enabled := FIsSnapshotLoaded;
 end;
 
 procedure TMainForm.UpdateBenchmarks;
@@ -450,8 +450,8 @@ end;
 
 procedure TMainForm.UpdateStatus(AForceRunning: Boolean);
 begin
-  if not FIsROMLoaded then
-    SetStatus(siState, 'ROM not loaded', [])
+  if not FIsSnapshotLoaded then
+    SetStatus(siState, 'Snapshot not loaded', [])
   else
     if FIsRunning or AForceRunning then
       SetStatus(siState, 'Running', [])
