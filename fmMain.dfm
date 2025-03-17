@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 0
   Top = 0
-  Caption = 'BytePusher'
+  Caption = 'MainForm'
   ClientHeight = 275
   ClientWidth = 500
   Color = clBtnFace

@@ -6,6 +6,9 @@ uses
   Classes, Forms, Windows, SysUtils, Dialogs, Controls, StdCtrls, ExtCtrls,
   ComCtrls, AppEvnts, MMSystem, Menus, ActnList, unVM, unStopwatch;
 
+const
+  c_ProgramName = 'BytePusher';
+
 type
   TScreenBitmapInfo = packed record
     bmiHeader: TBitmapInfoHeader;
@@ -254,6 +257,8 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
+  Caption := c_ProgramName;
+
   timeBeginPeriod(1); // for more accurate delay on Sleep(1)
 
   QueryPerformanceFrequency(FTimerFreq);
@@ -294,6 +299,7 @@ begin
   FVM.LoadSnapshot(AFileName);
   FIsROMLoaded := True;
   FLoadedROMPath := AFileName;
+  Caption := Format('%s - %s', [ExtractFileName(FLoadedROMPath), c_ProgramName]);
   SetIsRunning(ARun);
   UpdateActions;
   UpdateStatus;
