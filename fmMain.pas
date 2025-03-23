@@ -100,7 +100,9 @@ type
     function UpdateFrameIfNeeded: Boolean;
     procedure UpdateActions; reintroduce;
     procedure UpdateStatus(AForceRunning: Boolean = False);
+    function IsBenchmarkingActive: Boolean; inline;
     procedure UpdateBenchmarks;
+    procedure ResetBenchmarks;
   public
 
   end;
@@ -128,15 +130,10 @@ end;
 procedure TMainForm.acBenchmarksExecute(Sender: TObject);
 begin
   { "Show benchmarks" }
-  if FIsRunning and acBenchmarks.Checked then
+  if IsBenchmarkingActive then
   begin
     tmrBenchmarks.Enabled := True;
-    FFrameCount := 0;
-    FFrameDrawCount := 0;
-    FFrameCalcTime.Reset;
-    FFrameRenderTime.Reset;
-    FFrameDrawingTime.Reset;
-    QueryPerformanceCounter(FPrevBenchmarksTime);
+    ResetBenchmarks;
   end
   else
     tmrBenchmarks.Enabled := False;
@@ -198,12 +195,7 @@ begin
   if not FIsRunning then
     Exit;
 
-  if UpdateFrameIfNeeded then
-  begin
-    if acBenchmarks.Checked then
-      Inc(FFrameCount);
-  end
-  else
+  if not UpdateFrameIfNeeded then
     Sleep(1);
 
   Done := False;
@@ -255,21 +247,31 @@ end;
 
 procedure TMainForm.DoVMFrame;
 begin
-  if FIsRunning and acBenchmarks.Checked then
+  if IsBenchmarkingActive then
     FFrameCalcTime.Start;
   FVM.CalcNextFrame;
-  if FIsRunning and acBenchmarks.Checked then
+  if IsBenchmarkingActive then
     FFrameCalcTime.Stop;
 
   UpdateScreen(FVM.GetScreenBuf);
+
+  if IsBenchmarkingActive then
+    Inc(FFrameCount);
 end;
 
 procedure TMainForm.DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth,
   ADstHeight: Integer);
 begin
+  if IsBenchmarkingActive then
+    FFrameDrawingTime.Start;
   StretchDIBits(ADC, ADstX, ADstY, ADstWidth, ADstHeight,
     0, 0, c_BytePusherScrWidth, c_BytePusherScrHeight,
       FScreenPixels, PBitmapInfo(@FScreenBitmapInfo)^, DIB_RGB_COLORS, SRCCOPY);
+  if IsBenchmarkingActive then
+  begin
+    FFrameDrawingTime.Stop;
+    Inc(FFrameDrawCount);
+  end;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -311,6 +313,11 @@ begin
   timeEndPeriod(1);
 end;
 
+function TMainForm.IsBenchmarkingActive: Boolean;
+begin
+  Result := FIsRunning and acBenchmarks.Checked;
+end;
+
 procedure TMainForm.LoadSnapshot(const AFileName: string; ARun: Boolean);
 begin
   FVM.LoadSnapshot(AFileName);
@@ -325,15 +332,8 @@ end;
 
 procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
-  if FIsRunning and acBenchmarks.Checked then
-    FFrameDrawingTime.Start;
   DrawScreen(pbScreen.Canvas.Handle, 0, 0, pbScreen.ClientWidth,
     pbScreen.ClientHeight);
-  if FIsRunning and acBenchmarks.Checked then
-  begin
-    FFrameDrawingTime.Stop;
-    Inc(FFrameDrawCount);
-  end;
 end;
 
 procedure TMainForm.pnlScreenResize(Sender: TObject);
@@ -347,20 +347,25 @@ begin
   pbScreen.Height := lcScrSize;
 end;
 
+procedure TMainForm.ResetBenchmarks;
+begin
+  FFrameCount := 0;
+  FFrameDrawCount := 0;
+  FFrameCalcTime.Reset;
+  FFrameRenderTime.Reset;
+  FFrameDrawingTime.Reset;
+  QueryPerformanceCounter(FPrevBenchmarksTime);
+end;
+
 procedure TMainForm.SetIsRunning(AIsRunning: Boolean);
 begin
   FIsRunning := AIsRunning;
-  tmrBenchmarks.Enabled := FIsRunning and acBenchmarks.Checked;
+  tmrBenchmarks.Enabled := IsBenchmarkingActive;
   if FIsRunning then
   begin
     FFrameTimer := 0;
-    FFrameCount := 0;
-    FFrameDrawCount := 0;
-    FFrameCalcTime.Reset;
-    FFrameRenderTime.Reset;
-    FFrameDrawingTime.Reset;
     QueryPerformanceCounter(FPrevFrameTime);
-    FPrevBenchmarksTime := FPrevFrameTime;
+    ResetBenchmarks;
   end;
 end;
 
@@ -388,7 +393,7 @@ var
   lcCurTime: Int64;
   lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime: Double;
 begin
-  if not FIsRunning or not acBenchmarks.Checked then
+  if not IsBenchmarkingActive then
   begin
     SetStatus(siFPS, '', []);
     SetStatus(siCalcTime, '', []);
@@ -412,19 +417,14 @@ begin
   end;
   SetStatus(siCalcTime, 'VM: %.2f ms', [lcCalcTime]);
   SetStatus(siRenderTime, 'Render: %.2f ms', [lcRenderTime]);
-  FFrameCalcTime.Reset;
-  FFrameRenderTime.Reset;
 
   if FFrameDrawCount > 0 then
     lcDrawingTime := FFrameDrawingTime.ElapsedMillisecondsF / FFrameDrawCount
   else
     lcDrawingTime := 0.0;
   SetStatus(siDrawingTime, 'Draw: %.2f ms', [lcDrawingTime]);
-  FFrameDrawCount := 0;
-  FFrameDrawingTime.Reset;
 
-  FFrameCount := 0;
-  QueryPerformanceCounter(FPrevBenchmarksTime);
+  ResetBenchmarks;
 end;
 
 function TMainForm.UpdateFrameIfNeeded: Boolean;
@@ -447,14 +447,14 @@ end;
 
 procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
 begin
-  if FIsRunning and acBenchmarks.Checked then
+  if IsBenchmarkingActive then
     FFrameRenderTime.Start;
   // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
   // Since we have 256 bytes per line, this requirement is already met.
   Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
   Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
   Move(AVMScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
-  if FIsRunning and acBenchmarks.Checked then
+  if IsBenchmarkingActive then
     FFrameRenderTime.Stop;
 
   pbScreen.Invalidate;
