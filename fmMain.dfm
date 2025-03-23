@@ -96,7 +96,7 @@ object MainForm: TMainForm
     Left = 16
     Top = 16
     object miFile: TMenuItem
-      Caption = 'File'
+      Caption = '&File'
       object miOpen: TMenuItem
         Action = acOpen
       end
@@ -108,7 +108,7 @@ object MainForm: TMainForm
       end
     end
     object miRun: TMenuItem
-      Caption = 'Run'
+      Caption = '&Run'
       object miDoRun: TMenuItem
         Action = acRun
       end
@@ -123,7 +123,7 @@ object MainForm: TMainForm
       end
     end
     object miOptions: TMenuItem
-      Caption = 'Options'
+      Caption = '&Options'
       object miSound: TMenuItem
         Action = acSound
         AutoCheck = True
@@ -134,7 +134,7 @@ object MainForm: TMainForm
       end
     end
     object miHelp: TMenuItem
-      Caption = 'Help'
+      Caption = '&Help'
       object miAbout: TMenuItem
         Action = acAbout
       end
@@ -144,43 +144,43 @@ object MainForm: TMainForm
     Left = 80
     Top = 16
     object acOpen: TAction
-      Caption = 'Open...'
+      Caption = '&Open...'
       OnExecute = acOpenExecute
     end
     object acExit: TAction
-      Caption = 'Exit'
+      Caption = 'E&xit'
       OnExecute = acExitExecute
     end
     object acRun: TAction
-      Caption = 'Run'
+      Caption = '&Run'
       OnExecute = acRunExecute
     end
     object acNextFrame: TAction
-      Caption = 'Next frame'
+      Caption = '&Next frame'
       OnExecute = acNextFrameExecute
     end
     object acPause: TAction
-      Caption = 'Pause'
+      Caption = '&Pause'
       OnExecute = acPauseExecute
     end
     object acReset: TAction
-      Caption = 'Reset'
+      Caption = 'Re&set'
       OnExecute = acResetExecute
     end
     object acSound: TAction
       AutoCheck = True
-      Caption = 'Play sound'
+      Caption = 'Play &sound'
       Checked = True
       OnExecute = acSoundExecute
     end
     object acBenchmarks: TAction
       AutoCheck = True
-      Caption = 'Show benchmarks'
+      Caption = 'Show &benchmarks'
       Checked = True
       OnExecute = acBenchmarksExecute
     end
     object acAbout: TAction
-      Caption = 'About...'
+      Caption = '&About...'
       OnExecute = acAboutExecute
     end
   end
