@@ -97,7 +97,7 @@ type
     procedure LoadSnapshot(const AFileName: string; ARun: Boolean);
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
       const AArgs: array of const);
-    procedure UpdateFrameIfNeeded(ACanSleep: Boolean);
+    function UpdateFrameIfNeeded: Boolean;
     procedure UpdateActions; reintroduce;
     procedure UpdateStatus(AForceRunning: Boolean = False);
     procedure UpdateBenchmarks;
@@ -195,7 +195,17 @@ end;
 
 procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
 begin
-  UpdateFrameIfNeeded(True);
+  if not FIsRunning then
+    Exit;
+
+  if UpdateFrameIfNeeded then
+  begin
+    if acBenchmarks.Checked then
+      Inc(FFrameCount);
+  end
+  else
+    Sleep(1);
+
   Done := False;
 end;
 
@@ -417,13 +427,10 @@ begin
   QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
 
-procedure TMainForm.UpdateFrameIfNeeded(ACanSleep: Boolean);
+function TMainForm.UpdateFrameIfNeeded: Boolean;
 var
   lcCurTime, lcDeltaTime: Int64;
 begin
-  if not FIsRunning then
-    Exit;
-
   QueryPerformanceCounter(lcCurTime);
   lcDeltaTime := lcCurTime - FPrevFrameTime;
   Inc(FFrameTimer, lcDeltaTime);
@@ -431,12 +438,10 @@ begin
   begin
     FFrameTimer := FFrameTimer mod FFramePeriod;
     DoVMFrame;
-    if acBenchmarks.Checked then
-      Inc(FFrameCount);
+    Result := True;
   end
   else
-    if ACanSleep then
-      Sleep(1);
+    Result := False;
   FPrevFrameTime := lcCurTime;
 end;
 
