@@ -106,11 +106,8 @@ begin
 end;
 
 procedure TBytePusherVM.ZeroMemory;
-var
-  i: Integer;
 begin
-  for i := 0 to Length(FMem) - 1 do
-    FMem[i] := 0;
+  FillChar(FMem[0], Length(FMem), 0);
 end;
 
 end.

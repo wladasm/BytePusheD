@@ -90,7 +90,7 @@ type
     FFrameDrawCount: Integer; // for benchmarks
     FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
-    procedure UpdateScreen(AVMScreenBuf: PByte);
+    procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
     procedure SetIsRunning(AIsRunning: Boolean);
@@ -99,7 +99,7 @@ type
       const AArgs: array of const);
     function UpdateFrameIfNeeded: Boolean;
     procedure UpdateActions; reintroduce;
-    procedure UpdateStatus(AForceRunning: Boolean = False);
+    procedure UpdateStatus;
     function IsBenchmarkingActive: Boolean; inline;
     procedure UpdateBenchmarks;
     procedure ResetBenchmarks;
@@ -172,7 +172,7 @@ procedure TMainForm.acResetExecute(Sender: TObject);
 begin
   { "Reset" }
   LoadSnapshot(FLoadedSnapshotPath, FIsRunning);
-  UpdateScreen(FVM.GetScreenBuf);
+  UpdateScreen;
 end;
 
 procedure TMainForm.acRunExecute(Sender: TObject);
@@ -253,7 +253,7 @@ begin
   if IsBenchmarkingActive then
     FFrameCalcTime.Stop;
 
-  UpdateScreen(FVM.GetScreenBuf);
+  UpdateScreen;
 
   if IsBenchmarkingActive then
     Inc(FFrameCount);
@@ -445,27 +445,30 @@ begin
   FPrevFrameTime := lcCurTime;
 end;
 
-procedure TMainForm.UpdateScreen(AVMScreenBuf: PByte);
+procedure TMainForm.UpdateScreen;
+var
+  lcScreenBuf: PByte;
 begin
   if IsBenchmarkingActive then
     FFrameRenderTime.Start;
+  lcScreenBuf := FVM.GetScreenBuf;
   // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
   // Since we have 256 bytes per line, this requirement is already met.
   Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
   Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
-  Move(AVMScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
+  Move(lcScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
   if IsBenchmarkingActive then
     FFrameRenderTime.Stop;
 
   pbScreen.Invalidate;
 end;
 
-procedure TMainForm.UpdateStatus(AForceRunning: Boolean);
+procedure TMainForm.UpdateStatus;
 begin
   if not FIsSnapshotLoaded then
     SetStatus(siState, 'Snapshot not loaded', [])
   else
-    if FIsRunning or AForceRunning then
+    if FIsRunning then
       SetStatus(siState, 'Running', [])
     else
       SetStatus(siState, 'Paused', []);
