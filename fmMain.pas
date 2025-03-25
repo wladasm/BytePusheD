@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Dialogs, Controls, StdCtrls, ExtCtrls,
-  ComCtrls, AppEvnts, MMSystem, Menus, ActnList, unVM, unStopwatch;
+  ComCtrls, AppEvnts, MMSystem, Menus, Buttons, ActnList, unVM, unStopwatch;
 
 const
   c_ProgramName = 'BytePusher';
@@ -74,6 +74,7 @@ type
     procedure pnlScreenResize(Sender: TObject);
   private
     FVM: TBytePusherVM;
+    FVMKeyStates: TBytePusherKeyStates;
     FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
     FIsSnapshotLoaded: Boolean;
@@ -90,6 +91,7 @@ type
     FFrameDrawCount: Integer; // for benchmarks
     FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
+    procedure CreateKeyboard;
     procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
@@ -103,6 +105,10 @@ type
     function IsBenchmarkingActive: Boolean; inline;
     procedure UpdateBenchmarks;
     procedure ResetBenchmarks;
+    procedure VMKeyMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure VMKeyMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   public
 
   end;
@@ -201,6 +207,38 @@ begin
   Done := False;
 end;
 
+procedure TMainForm.CreateKeyboard;
+const
+  c_TopSpace = 25;
+  c_KeySize = 50;
+  c_FontSize = 14;
+var
+  lcRows, lcCols, lcSideSpace, i, j: Integer;
+  lcKey: TBytePusherKey;
+begin
+  lcRows := Length(c_BytePusherKeysLayout);
+  lcCols := Length(c_BytePusherKeysLayout[0]);
+  lcSideSpace := (pnlKeyboard.Width - lcCols * c_KeySize) div 2;
+  for i := 0 to lcRows - 1 do
+    for j := 0 to lcCols - 1 do
+    begin
+      lcKey := c_BytePusherKeysLayout[i, j];
+      with TSpeedButton.Create(pnlKeyboard) do
+      begin
+        Parent := pnlKeyboard;
+        Caption := c_BytePusherKeyNames[lcKey];
+        Tag := Ord(lcKey);
+        Font.Size := c_FontSize;
+        Left := lcSideSpace + c_KeySize * j;
+        Top := c_TopSpace + c_KeySize * i;
+        Width := c_KeySize;
+        Height := c_KeySize;
+        OnMouseDown := VMKeyMouseDown;
+        OnMouseUp := VMKeyMouseUp;
+      end;
+    end;
+end;
+
 procedure TMainForm.CreateScreen;
 var
   lcColor: Integer;
@@ -247,6 +285,8 @@ end;
 
 procedure TMainForm.DoVMFrame;
 begin
+  FVM.SetKeyStates(FVMKeyStates);
+
   if IsBenchmarkingActive then
     FFrameCalcTime.Start;
   FVM.CalcNextFrame;
@@ -285,6 +325,7 @@ begin
 
   FVM := TBytePusherVM.Create;
   CreateScreen;
+  CreateKeyboard;
 
   FFrameCalcTime := TStopwatch.Create;
   FFrameRenderTime := TStopwatch.Create;
@@ -472,6 +513,24 @@ begin
       SetStatus(siState, 'Running', [])
     else
       SetStatus(siState, 'Paused', []);
+end;
+
+procedure TMainForm.VMKeyMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  lcKey: TBytePusherKey;
+begin
+  lcKey := TBytePusherKey((Sender as TSpeedButton).Tag);
+  FVMKeyStates[lcKey] := True;
+end;
+
+procedure TMainForm.VMKeyMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  lcKey: TBytePusherKey;
+begin
+  lcKey := TBytePusherKey((Sender as TSpeedButton).Tag);
+  FVMKeyStates[lcKey] := False;
 end;
 
 end.

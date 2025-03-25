@@ -2,6 +2,11 @@ unit unVM;
 
 interface
 
+type
+  TBytePusherKey = (bpkKey0, bpkKey1, bpkKey2, bpkKey3, bpkKey4, bpkKey5,
+    bpkKey6, bpkKey7, bpkKey8, bpkKey9, bpkKeyA, bpkKeyB, bpkKeyC, bpkKeyD,
+    bpkKeyE, bpkKeyF);
+
 const
   c_BytePusherCmdSize = 3 * 3;
   c_BytePusherMemSize = 256 * 256 * 256;
@@ -10,8 +15,17 @@ const
   c_BytePusherScrHeight = 256;
   c_BytePusherScrBufSize = c_BytePusherScrWidth * c_BytePusherScrHeight * SizeOf(Byte);
   c_BytePusherFPS = 60;
+  c_BytePusherKeyNames: array [TBytePusherKey] of string = ('0', '1', '2', '3',
+    '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
+  c_BytePusherKeysLayout: array [0..3, 0..3] of TBytePusherKey = (
+    (bpkKey1, bpkKey2, bpkKey3, bpkKeyC),
+    (bpkKey4, bpkKey5, bpkKey6, bpkKeyD),
+    (bpkKey7, bpkKey8, bpkKey9, bpkKeyE),
+    (bpkKeyA, bpkKey0, bpkKeyB, bpkKeyF));
 
 type
+  TBytePusherKeyStates = array [TBytePusherKey] of Boolean;
+
   TBytePusherVM = class(TObject)
   private
     FMem: array [0..c_BytePusherMemAlloc - 1] of Byte;
@@ -19,6 +33,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure SetKeyStates(const AStates: TBytePusherKeyStates);
     procedure CalcNextFrame;
     function GetScreenBuf: PByte;
     procedure LoadSnapshot(const AFileName: string);
@@ -42,13 +57,8 @@ var
   lcPC: Cardinal;
   i: Integer;
 begin
-  // TODO: set key states
-  FMem[0] := 0;
-  FMem[1] := 0;
-
   lcPC := Get3(@FMem, 2);
 
-  // Addr 5: A value of ZZ means: pixel(XX, YY) is at address ZZYYXX
   // Addr 6: A value of XXYY means: audio sample ZZ is at address XXYYZZ
 
   for i := 1 to 65536 do
@@ -103,6 +113,24 @@ begin
     on E: Exception do
       raise Exception.Create('Error loading snapshot. ' + E.Message);
   end;
+end;
+
+procedure TBytePusherVM.SetKeyStates(const AStates: TBytePusherKeyStates);
+
+  function EncodeStates(AFirst, ALast: TBytePusherKey): Byte;
+  var
+    lcKey: TBytePusherKey;
+  begin
+    Assert((Ord(ALast) - Ord(AFirst) + 1) = 8);
+    Result := 0;
+    for lcKey := AFirst to ALast do
+      if AStates[lcKey] = True then
+        Result := Result or (1 shl (Ord(lcKey) - Ord(AFirst)));
+  end;  // EncodeStates
+
+begin
+  FMem[0] := EncodeStates(bpkKey8, bpkKeyF);
+  FMem[1] := EncodeStates(bpkKey0, bpkKey7);
 end;
 
 procedure TBytePusherVM.ZeroMemory;
