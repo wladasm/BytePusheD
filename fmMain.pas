@@ -19,7 +19,7 @@ type
   end;
 
   PScreenPixels = ^TScreenPixels;
-  TScreenPixels = array [0..c_BytePusherScrHeight - 1,
+  TScreenPixels = array[0..c_BytePusherScrHeight - 1,
     0..c_BytePusherScrWidth - 1] of Byte;
 
   TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime);
@@ -244,7 +244,7 @@ var
   lcColor: Integer;
   lcR, lcG, lcB: Byte;
 begin
-  FillChar(FScreenBitmapInfo, SizeOf(TScreenBitmapInfo), 0);
+  FillChar(FScreenBitmapInfo, SizeOf(FScreenBitmapInfo), 0);
   with FScreenBitmapInfo.bmiHeader do
   begin
     biSize := SizeOf(TBitmapInfoHeader);
@@ -280,7 +280,7 @@ begin
   end;
 
   New(FScreenPixels);
-  FillChar(FScreenPixels^, SizeOf(TScreenPixels), 0);
+  FillChar(FScreenPixels^, SizeOf(FScreenPixels^), 0);
 end;
 
 procedure TMainForm.DoVMFrame;
