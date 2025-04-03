@@ -4,13 +4,17 @@ interface
 
 uses
   Classes, Forms, Windows, SysUtils, Dialogs, Controls, StdCtrls, ExtCtrls,
-  ComCtrls, AppEvnts, MMSystem, Menus, Buttons, ActnList, unVM, unStopwatch;
+  ComCtrls, AppEvnts, MMSystem, Menus, Buttons, ActnList, unVM, unStopwatch,
+  unSound;
 
 const
   c_ProgramName = 'BytePusher';
   c_ProgramVersion = '0.01';
   c_ProgramYear = '2025';
   c_ProgramCopyright = 'Dan Peroff';
+
+  c_SoundBufferSize = 8 * c_BytePusherSoundBufSize;
+  c_MaxSoundBuffers = 10;
 
 type
   TScreenBitmapInfo = packed record
@@ -77,6 +81,9 @@ type
     FVMKeyStates: TBytePusherKeyStates;
     FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
+    FSoundStreamer: TSoundStreamer;
+    FSoundBuffer: PSoundBuffer;
+    FSoundPos: Cardinal;
     FIsSnapshotLoaded: Boolean;
     FLoadedSnapshotPath: string;
     FIsRunning: Boolean;
@@ -92,9 +99,11 @@ type
     FFrameDrawingTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure CreateKeyboard;
+    procedure CreateSoundStreamer;
     procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
+    procedure PlaySound;
     procedure SetIsRunning(AIsRunning: Boolean);
     procedure LoadSnapshot(const AFileName: string; ARun: Boolean);
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
@@ -283,6 +292,20 @@ begin
   FillChar(FScreenPixels^, SizeOf(FScreenPixels^), 0);
 end;
 
+procedure TMainForm.CreateSoundStreamer;
+var
+  lcParams: TSoundStreamerParams;
+begin
+  with lcParams do
+  begin
+    Channels := c_BytePusherSoundChannels;
+    SamplesPerSec := c_BytePusherSamplesPerSec;
+    BitsPerSample := c_BytePusherBitsPerSample;
+    MaxBuffers := c_MaxSoundBuffers;
+  end;
+  FSoundStreamer := TSoundStreamer.Create(lcParams);
+end;
+
 procedure TMainForm.DoVMFrame;
 begin
   FVM.SetKeyStates(FVMKeyStates);
@@ -294,6 +317,8 @@ begin
     FFrameCalcTime.Stop;
 
   UpdateScreen;
+
+  PlaySound;
 
   if IsBenchmarkingActive then
     Inc(FFrameCount);
@@ -326,6 +351,7 @@ begin
   FVM := TBytePusherVM.Create;
   CreateScreen;
   CreateKeyboard;
+  CreateSoundStreamer;
 
   FFrameCalcTime := TStopwatch.Create;
   FFrameRenderTime := TStopwatch.Create;
@@ -348,6 +374,7 @@ begin
   FFrameRenderTime.Free;
   FFrameCalcTime.Free;
 
+  FSoundStreamer.Free;
   Dispose(FScreenPixels);
   FVM.Free;
 
@@ -375,6 +402,38 @@ procedure TMainForm.pbScreenPaint(Sender: TObject);
 begin
   DrawScreen(pbScreen.Canvas.Handle, 0, 0, pbScreen.ClientWidth,
     pbScreen.ClientHeight);
+end;
+
+procedure TMainForm.PlaySound;
+var
+  lcVMSound: PByte;
+  i: Integer;
+begin
+  if not acSound.Checked or not FSoundStreamer.IsActive then
+    Exit;
+
+  if FSoundBuffer = nil then
+  begin
+    Assert((c_SoundBufferSize mod c_BytePusherSoundBufSize) = 0);
+    FSoundBuffer := FSoundStreamer.GetBuffer(c_SoundBufferSize);
+    if FSoundBuffer = nil then
+      Exit; // max buffers allocated, no free one
+    FSoundPos := 0;
+  end;
+
+  lcVMSound := FVM.GetSoundBuf;
+  Assert((FSoundBuffer.Size - FSoundPos) >= c_BytePusherSoundBufSize);
+  for i := 0 to c_BytePusherSoundBufSize - 1 do
+  begin
+    FSoundBuffer.Data[FSoundPos] := lcVMSound[i] + $80 {signed samples -> unsigned};
+    Inc(FSoundPos);
+  end;
+
+  if FSoundPos = FSoundBuffer.Size then
+  begin
+    FSoundStreamer.PlayBuffer(FSoundBuffer);
+    FSoundBuffer := nil;
+  end;
 end;
 
 procedure TMainForm.pnlScreenResize(Sender: TObject);

@@ -26,6 +26,11 @@ const
     (bpkKey7, bpkKey8, bpkKey9, bpkKeyE),
     (bpkKeyA, bpkKey0, bpkKeyB, bpkKeyF));
 
+  c_BytePusherSoundBufSize = 256 * SizeOf(Byte);
+  c_BytePusherSoundChannels = 1;
+  c_BytePusherSamplesPerSec = c_BytePusherSoundBufSize * c_BytePusherFPS;
+  c_BytePusherBitsPerSample = 8;
+
 type
   TBytePusherKeyStates = array[TBytePusherKey] of Boolean;
 
@@ -37,6 +42,7 @@ type
     procedure SetKeyStates(const AStates: TBytePusherKeyStates);
     procedure CalcNextFrame;
     function GetScreenBuf: PByte;
+    function GetSoundBuf: PByte;
     procedure LoadSnapshot(const AFileName: string);
   end;
 
@@ -60,15 +66,11 @@ var
 begin
   lcPC := Get3(@FMem, 2);
 
-  // Addr 6: A value of XXYY means: audio sample ZZ is at address XXYYZZ
-
   for i := 1 to 65536 do
   begin
     FMem[Get3(@FMem, lcPC + 3)] := FMem[Get3(@FMem, lcPC)];
     lcPC := Get3(@FMem, lcPC + 6);
   end;
-
-  // TODO: play sound
 end;
 
 function TBytePusherVM.GetScreenBuf: PByte;
@@ -78,6 +80,15 @@ begin
   lcScr := FMem[5] shl 16;
   Assert(lcScr <= (c_BytePusherMemSize - c_BytePusherScrBufSize));
   Result := @FMem[lcScr];
+end;
+
+function TBytePusherVM.GetSoundBuf: PByte;
+var
+  lcSnd: Cardinal;
+begin
+  lcSnd := (FMem[6] shl 16) or (FMem[7] shl 8);
+  Assert(lcSnd <= (c_BytePusherMemSize - c_BytePusherSoundBufSize));
+  Result := @FMem[lcSnd];
 end;
 
 procedure TBytePusherVM.LoadSnapshot(const AFileName: string);

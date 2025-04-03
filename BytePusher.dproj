@@ -51,6 +51,7 @@
 			</DCCReference>
 			<DCCReference Include="unVM.pas"/>
 			<DCCReference Include="unStopwatch.pas"/>
+			<DCCReference Include="unSound.pas"/>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
