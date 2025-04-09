@@ -104,6 +104,7 @@ type
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
     procedure PlaySound;
+    procedure FreeSoundBuffer;
     procedure SetIsRunning(AIsRunning: Boolean);
     procedure LoadSnapshot(const AFileName: string; ARun: Boolean);
     procedure SetStatus(AItem: TStatusItem; const AFormat: string;
@@ -202,7 +203,8 @@ end;
 procedure TMainForm.acSoundExecute(Sender: TObject);
 begin
   { "Play sound" }
-  // do nothing
+  if not acSound.Checked then
+    FSoundStreamer.StopPlaying;
 end;
 
 procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
@@ -381,6 +383,15 @@ begin
   timeEndPeriod(1);
 end;
 
+procedure TMainForm.FreeSoundBuffer;
+begin
+  if FSoundBuffer <> nil then
+  begin
+    FSoundStreamer.CancelBuffer(FSoundBuffer);
+    FSoundBuffer := nil;
+  end;
+end;
+
 function TMainForm.IsBenchmarkingActive: Boolean;
 begin
   Result := FIsRunning and acBenchmarks.Checked;
@@ -389,10 +400,16 @@ end;
 procedure TMainForm.LoadSnapshot(const AFileName: string; ARun: Boolean);
 begin
   FVM.LoadSnapshot(AFileName);
+
   FIsSnapshotLoaded := True;
   FLoadedSnapshotPath := AFileName;
   Caption := Format('%s - %s', [ExtractFileName(FLoadedSnapshotPath), c_ProgramName]);
+
   SetIsRunning(ARun);
+
+  FSoundStreamer.StopPlaying;
+  FreeSoundBuffer;
+
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
@@ -409,8 +426,11 @@ var
   lcVMSound: PByte;
   i: Integer;
 begin
-  if not acSound.Checked or not FSoundStreamer.IsActive then
+  if not FSoundStreamer.IsActive then
+  begin
+    FreeSoundBuffer;
     Exit;
+  end;
 
   if FSoundBuffer = nil then
   begin
@@ -431,8 +451,13 @@ begin
 
   if FSoundPos = FSoundBuffer.Size then
   begin
-    FSoundStreamer.PlayBuffer(FSoundBuffer);
-    FSoundBuffer := nil;
+    if FIsRunning and acSound.Checked then
+    begin
+      FSoundStreamer.PlayBuffer(FSoundBuffer);
+      FSoundBuffer := nil;
+    end
+    else
+      FSoundPos := 0; // in "next frame" mode don't play sound, just clear buffer
   end;
 end;
 
@@ -466,7 +491,9 @@ begin
     FFrameTimer := 0;
     QueryPerformanceCounter(FPrevFrameTime);
     ResetBenchmarks;
-  end;
+  end
+  else
+    FSoundStreamer.StopPlaying;
 end;
 
 procedure TMainForm.SetStatus(AItem: TStatusItem; const AFormat: string;

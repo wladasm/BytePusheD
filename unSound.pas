@@ -20,9 +20,7 @@ type
     Data: array of Byte;
   end;
 
-  // TODO: stop sound method
   // TODO: volume
-  // TODO: CancelBuffer?
   // TODO: record -> class?
   TSoundStreamer = class(TObject)
   private
@@ -43,6 +41,8 @@ type
     destructor Destroy; override;
     function GetBuffer(ASize: Cardinal): PSoundBuffer;
     procedure PlayBuffer(ABuffer: PSoundBuffer);
+    procedure CancelBuffer(ABuffer: PSoundBuffer);
+    procedure StopPlaying;
   public
     property IsActive: Boolean read FIsActive;
   end;
@@ -53,6 +53,16 @@ uses
   Windows, SysUtils;
 
 { TSoundStream }
+
+procedure TSoundStreamer.CancelBuffer(ABuffer: PSoundBuffer);
+begin
+  Assert(FBuffers.IndexOf(ABuffer) >= 0);
+  Assert((ABuffer.Header.dwFlags and WHDR_PREPARED) = 0);
+  Assert((ABuffer.Header.dwFlags and WHDR_DONE) = 0);
+
+  // mark the buffer as free and ready for reuse
+  ABuffer.Header.dwFlags := WHDR_DONE;
+end;
 
 function TSoundStreamer.Check(AErrorCode: MMRESULT): Boolean;
 begin
@@ -136,8 +146,8 @@ begin
   if Result <> nil then
   begin
     // reuse a buffer that has finished playing
-    Assert((Result.Header.dwFlags and WHDR_PREPARED) <> 0);
-    Check(waveOutUnprepareHeader(FWaveOut, @Result.Header, SizeOf(Result.Header)));
+    if (Result.Header.dwFlags and WHDR_PREPARED) <> 0 then
+      Check(waveOutUnprepareHeader(FWaveOut, @Result.Header, SizeOf(Result.Header)));
     InitBuffer(Result, ASize);
   end
   else
@@ -198,7 +208,10 @@ begin
   Assert((ABuffer.Header.dwFlags and WHDR_DONE) = 0);
 
   if not FIsActive then
+  begin
+    CancelBuffer(ABuffer);
     Exit;
+  end;
 
   Check(waveOutPrepareHeader(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
   Check(waveOutWrite(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
@@ -215,6 +228,14 @@ begin
         MB_ICONERROR or MB_OK)
   else
     MessageBox(0, 'Sound error!', 'Error', MB_ICONERROR or MB_OK);
+end;
+
+procedure TSoundStreamer.StopPlaying;
+begin
+  if not FIsActive then
+    Exit;
+
+  Check(waveOutReset(FWaveOut));
 end;
 
 procedure TSoundStreamer.UnprepareBuffers;
