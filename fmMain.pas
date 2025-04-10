@@ -26,7 +26,8 @@ type
   TScreenPixels = array[0..c_BytePusherScrHeight - 1,
     0..c_BytePusherScrWidth - 1] of Byte;
 
-  TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime);
+  TStatusItem = (siState = 0, siFPS, siCalcTime, siRenderTime, siDrawingTime,
+    siSoundTime);
 
   TMainForm = class(TForm)
     pbScreen: TPaintBox;
@@ -97,9 +98,12 @@ type
     FFrameRenderTime: TStopwatch; // for benchmarks
     FFrameDrawCount: Integer; // for benchmarks
     FFrameDrawingTime: TStopwatch; // for benchmarks
+    FSoundSystemTime: TStopwatch; // for benchmarks
     procedure CreateScreen;
     procedure CreateKeyboard;
     procedure CreateSoundStreamer;
+    procedure CreateBenchmarkTimers;
+    procedure FreeBenchmarkTimers;
     procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
@@ -216,6 +220,14 @@ begin
     Sleep(1);
 
   Done := False;
+end;
+
+procedure TMainForm.CreateBenchmarkTimers;
+begin
+  FFrameCalcTime := TStopwatch.Create;
+  FFrameRenderTime := TStopwatch.Create;
+  FFrameDrawingTime := TStopwatch.Create;
+  FSoundSystemTime := TStopwatch.Create;
 end;
 
 procedure TMainForm.CreateKeyboard;
@@ -354,10 +366,7 @@ begin
   CreateScreen;
   CreateKeyboard;
   CreateSoundStreamer;
-
-  FFrameCalcTime := TStopwatch.Create;
-  FFrameRenderTime := TStopwatch.Create;
-  FFrameDrawingTime := TStopwatch.Create;
+  CreateBenchmarkTimers;
 
   SetIsRunning(False);
   UpdateActions;
@@ -372,15 +381,20 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
-  FFrameDrawingTime.Free;
-  FFrameRenderTime.Free;
-  FFrameCalcTime.Free;
-
+  FreeBenchmarkTimers;
   FSoundStreamer.Free;
   Dispose(FScreenPixels);
   FVM.Free;
 
   timeEndPeriod(1);
+end;
+
+procedure TMainForm.FreeBenchmarkTimers;
+begin
+  FSoundSystemTime.Free;
+  FFrameDrawingTime.Free;
+  FFrameRenderTime.Free;
+  FFrameCalcTime.Free;
 end;
 
 procedure TMainForm.FreeSoundBuffer;
@@ -426,6 +440,9 @@ var
   lcVMSound: PByte;
   i: Integer;
 begin
+  if IsBenchmarkingActive then
+    FSoundSystemTime.Start;
+
   if not FSoundStreamer.IsActive then
   begin
     FreeSoundBuffer;
@@ -459,6 +476,9 @@ begin
     else
       FSoundPos := 0; // in "next frame" mode don't play sound, just clear buffer
   end;
+
+  if IsBenchmarkingActive then
+    FSoundSystemTime.Stop;
 end;
 
 procedure TMainForm.pnlScreenResize(Sender: TObject);
@@ -479,6 +499,7 @@ begin
   FFrameCalcTime.Reset;
   FFrameRenderTime.Reset;
   FFrameDrawingTime.Reset;
+  FSoundSystemTime.Reset;
   QueryPerformanceCounter(FPrevBenchmarksTime);
 end;
 
@@ -518,7 +539,7 @@ end;
 procedure TMainForm.UpdateBenchmarks;
 var
   lcCurTime: Int64;
-  lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime: Double;
+  lcFPS, lcCalcTime, lcRenderTime, lcDrawingTime, lcSoundTime: Double;
 begin
   if not IsBenchmarkingActive then
   begin
@@ -526,6 +547,7 @@ begin
     SetStatus(siCalcTime, '', []);
     SetStatus(siRenderTime, '', []);
     SetStatus(siDrawingTime, '', []);
+    SetStatus(siSoundTime, '', []);
     Exit;
   end;
 
@@ -550,6 +572,12 @@ begin
   else
     lcDrawingTime := 0.0;
   SetStatus(siDrawingTime, 'Draw: %.2f ms', [lcDrawingTime]);
+
+  if FFrameCount > 0 then
+    lcSoundTime := FSoundSystemTime.ElapsedMillisecondsF / FFrameCount
+  else
+    lcSoundTime := 0.0;
+  SetStatus(siSoundTime, 'Sound: %.2f ms', [lcSoundTime]);
 
   ResetBenchmarks;
 end;

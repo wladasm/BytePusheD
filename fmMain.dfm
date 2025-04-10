@@ -37,6 +37,9 @@ object MainForm: TMainForm
       end
       item
         Width = 95
+      end
+      item
+        Width = 95
       end>
   end
   object pnlKeyboard: TPanel
@@ -49,8 +52,6 @@ object MainForm: TMainForm
     BevelWidth = 2
     ShowCaption = False
     TabOrder = 1
-    ExplicitLeft = 248
-    ExplicitTop = 11
   end
   object pnlScreen: TPanel
     Left = 0
