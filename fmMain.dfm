@@ -125,9 +125,8 @@ object MainForm: TMainForm
     end
     object miOptions: TMenuItem
       Caption = '&Options'
-      object miSound: TMenuItem
-        Action = acSound
-        AutoCheck = True
+      object miVolume: TMenuItem
+        Caption = 'Sound volume'
       end
       object miBenchmarks: TMenuItem
         Action = acBenchmarks
@@ -167,12 +166,6 @@ object MainForm: TMainForm
     object acReset: TAction
       Caption = 'Re&set'
       OnExecute = acResetExecute
-    end
-    object acSound: TAction
-      AutoCheck = True
-      Caption = 'Play &sound'
-      Checked = True
-      OnExecute = acSoundExecute
     end
     object acBenchmarks: TAction
       AutoCheck = True

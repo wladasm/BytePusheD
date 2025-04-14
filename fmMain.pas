@@ -15,6 +15,7 @@ const
 
   c_SoundBufferSize = 8 * c_BytePusherSoundBufSize;
   c_MaxSoundBuffers = 10;
+  c_DefaultSoundValue = 10; // %
 
 type
   TScreenBitmapInfo = packed record
@@ -46,7 +47,7 @@ type
     miPause: TMenuItem;
     miReset: TMenuItem;
     miOptions: TMenuItem;
-    miSound: TMenuItem;
+    miVolume: TMenuItem;
     miBenchmarks: TMenuItem;
     miHelp: TMenuItem;
     miAbout: TMenuItem;
@@ -57,7 +58,6 @@ type
     acNextFrame: TAction;
     acPause: TAction;
     acReset: TAction;
-    acSound: TAction;
     acBenchmarks: TAction;
     acAbout: TAction;
     pnlKeyboard: TPanel;
@@ -73,7 +73,6 @@ type
     procedure acNextFrameExecute(Sender: TObject);
     procedure acPauseExecute(Sender: TObject);
     procedure acResetExecute(Sender: TObject);
-    procedure acSoundExecute(Sender: TObject);
     procedure acAboutExecute(Sender: TObject);
     procedure acBenchmarksExecute(Sender: TObject);
     procedure pnlScreenResize(Sender: TObject);
@@ -85,6 +84,8 @@ type
     FSoundStreamer: TSoundStreamer;
     FSoundBuffer: PSoundBuffer;
     FSoundPos: Cardinal;
+    FIsSoundEnabled: Boolean;
+    FSoundVolume: Double; // 0.0 .. 1.0
     FIsSnapshotLoaded: Boolean;
     FLoadedSnapshotPath: string;
     FIsRunning: Boolean;
@@ -104,6 +105,7 @@ type
     procedure CreateSoundStreamer;
     procedure CreateBenchmarkTimers;
     procedure FreeBenchmarkTimers;
+    procedure CreateVolumeMenu;
     procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
@@ -119,6 +121,7 @@ type
     function IsBenchmarkingActive: Boolean; inline;
     procedure UpdateBenchmarks;
     procedure ResetBenchmarks;
+    procedure SoundVolumeItemClick(Sender: TObject);
     procedure VMKeyMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure VMKeyMouseUp(Sender: TObject; Button: TMouseButton;
@@ -202,13 +205,6 @@ begin
   UpdateActions;
   UpdateStatus;
   UpdateBenchmarks;
-end;
-
-procedure TMainForm.acSoundExecute(Sender: TObject);
-begin
-  { "Play sound" }
-  if not acSound.Checked then
-    FSoundStreamer.StopPlaying;
 end;
 
 procedure TMainForm.AppEventsIdle(Sender: TObject; var Done: Boolean);
@@ -320,6 +316,44 @@ begin
   FSoundStreamer := TSoundStreamer.Create(lcParams);
 end;
 
+procedure TMainForm.CreateVolumeMenu;
+
+  function CreateItem(AVolume: Integer): TMenuItem;
+  begin
+    Result := TMenuItem.Create(MainMenu);
+    miVolume.Add(Result);
+    with Result do
+    begin
+      case AVolume of
+        0: Caption := '&Mute';
+        100: Caption := '1&00%';
+      else
+        Caption := Format('&%d%%', [AVolume]);
+      end;
+      Tag := AVolume;
+      RadioItem := True;
+      AutoCheck := True;
+      OnClick := SoundVolumeItemClick;
+    end;
+  end; // CreateItem
+
+var
+  i, lcVolume: Integer;
+  lcItem, lcActiveItem: TMenuItem;
+begin
+  lcActiveItem := nil; // anti-warning
+  for i := 10 downto 0 do
+  begin
+    lcVolume := i * 10; // 0..100%
+    lcItem := CreateItem(lcVolume);
+    if lcVolume = c_DefaultSoundValue then
+      lcActiveItem := lcItem;
+  end;
+
+  lcActiveItem.Checked := True;
+  SoundVolumeItemClick(lcActiveItem);
+end;
+
 procedure TMainForm.DoVMFrame;
 begin
   FVM.SetKeyStates(FVMKeyStates);
@@ -366,6 +400,7 @@ begin
   CreateScreen;
   CreateKeyboard;
   CreateSoundStreamer;
+  CreateVolumeMenu;
   CreateBenchmarkTimers;
 
   SetIsRunning(False);
@@ -439,6 +474,7 @@ procedure TMainForm.PlaySound;
 var
   lcVMSound: PByte;
   i: Integer;
+  lcSample: Byte;
 begin
   if IsBenchmarkingActive then
     FSoundSystemTime.Start;
@@ -460,15 +496,26 @@ begin
 
   lcVMSound := FVM.GetSoundBuf;
   Assert((FSoundBuffer.Size - FSoundPos) >= c_BytePusherSoundBufSize);
-  for i := 0 to c_BytePusherSoundBufSize - 1 do
+  Assert((FSoundVolume >= 0.0) and (FSoundVolume <= 1.0));
+  if FIsSoundEnabled then
   begin
-    FSoundBuffer.Data[FSoundPos] := lcVMSound[i] + $80 {signed samples -> unsigned};
-    Inc(FSoundPos);
+    // volume > 0
+    for i := 0 to c_BytePusherSoundBufSize - 1 do
+    begin
+      lcSample := Round(ShortInt(lcVMSound[i]) * FSoundVolume) + $80 {signed sample -> unsigned};
+      FSoundBuffer.Data[FSoundPos] := lcSample;
+      Inc(FSoundPos);
+    end;
+  end
+  else begin
+    // volume = 0, little optimization
+    FillChar(FSoundBuffer.Data[FSoundPos], c_BytePusherSoundBufSize, $80 {silence} );
+    Inc(FSoundPos, c_BytePusherSoundBufSize);
   end;
 
   if FSoundPos = FSoundBuffer.Size then
   begin
-    if FIsRunning and acSound.Checked then
+    if FIsRunning and FIsSoundEnabled then
     begin
       FSoundStreamer.PlayBuffer(FSoundBuffer);
       FSoundBuffer := nil;
@@ -521,6 +568,21 @@ procedure TMainForm.SetStatus(AItem: TStatusItem; const AFormat: string;
   const AArgs: array of const);
 begin
   stbStatus.Panels[Ord(AItem)].Text := Format(AFormat, AArgs);
+end;
+
+procedure TMainForm.SoundVolumeItemClick(Sender: TObject);
+var
+  lcVolume: Integer;
+begin
+  lcVolume := (Sender as TMenuItem).Tag;
+  Assert((lcVolume >= 0) and (lcVolume <= 100));
+  FIsSoundEnabled := lcVolume > 0;
+  FSoundVolume := lcVolume / 100;
+  if not FIsSoundEnabled then
+  begin
+    FSoundStreamer.StopPlaying;
+    FreeSoundBuffer;
+  end;
 end;
 
 procedure TMainForm.tmrBenchmarksTimer(Sender: TObject);

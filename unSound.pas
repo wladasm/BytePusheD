@@ -20,12 +20,13 @@ type
     Data: array of Byte;
   end;
 
-  // TODO: volume
   // TODO: record -> class?
   TSoundStreamer = class(TObject)
   private
     FWaveOut: HWAVEOUT;
     FIsActive: Boolean;
+    FIsVolumeSupported: Boolean;
+    FIsLRVolumeSupported: Boolean;
     FMaxBuffers: Integer;
     FBuffers: TList; // of PSoundBuffer
     procedure OpenDevice(const AParams: TSoundStreamerParams);
@@ -43,8 +44,12 @@ type
     procedure PlayBuffer(ABuffer: PSoundBuffer);
     procedure CancelBuffer(ABuffer: PSoundBuffer);
     procedure StopPlaying;
+    // not used now
+    procedure SetDevVolume(const ALeftOrSingle, ARight: Single); // 0.0 .. 1.0
   public
     property IsActive: Boolean read FIsActive;
+    property IsVolumeSupported: Boolean read FIsVolumeSupported; // general volume control
+    property IsLRVolumeSupported: Boolean read FIsLRVolumeSupported; // separate left and right volume control
   end;
 
 implementation
@@ -180,6 +185,7 @@ end;
 procedure TSoundStreamer.OpenDevice(const AParams: TSoundStreamerParams);
 var
   lcWaveFormat: TWaveFormatEx;
+  lcDevCaps: TWaveOutCaps;
 begin
   FIsActive := False;
 
@@ -198,7 +204,9 @@ begin
     CALLBACK_NULL)) then
       FIsActive := True;
 
-  Check(waveOutSetVolume(FWaveOut, $20002000)); // TODO: del
+  Check(waveOutGetDevCaps(FWaveOut, @lcDevCaps, SizeOf(lcDevCaps)));
+  FIsVolumeSupported := (lcDevCaps.dwSupport and WAVECAPS_VOLUME) <> 0;
+  FIsLRVolumeSupported := (lcDevCaps.dwSupport and WAVECAPS_LRVOLUME) <> 0;
 end;
 
 procedure TSoundStreamer.PlayBuffer(ABuffer: PSoundBuffer);
@@ -215,6 +223,24 @@ begin
 
   Check(waveOutPrepareHeader(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
   Check(waveOutWrite(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
+end;
+
+procedure TSoundStreamer.SetDevVolume(const ALeftOrSingle, ARight: Single);
+var
+  lcLeft, lcRight: Word;
+  lcVolume: Cardinal;
+begin
+  Assert((ALeftOrSingle >= 0.0) and (ALeftOrSingle <= 1.0));
+  Assert((ARight >= 0.0) and (ARight <= 1.0));
+  Assert(FIsLRVolumeSupported or (ARight = 0.0));
+
+  if not FIsActive or not FIsVolumeSupported then
+    Exit;
+
+  lcLeft := Trunc($FFFF * ALeftOrSingle);
+  lcRight := Trunc($FFFF * ARight);
+  lcVolume := (lcRight shl 16) or lcLeft;
+  Check(waveOutSetVolume(FWaveOut, lcVolume));
 end;
 
 procedure TSoundStreamer.ShowError(AErrorCode: MMRESULT);
