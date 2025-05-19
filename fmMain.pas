@@ -82,7 +82,7 @@ type
     FScreenBitmapInfo: TScreenBitmapInfo;
     FScreenPixels: PScreenPixels;
     FSoundStreamer: TSoundStreamer;
-    FSoundBuffer: PSoundBuffer;
+    FSoundBuffer: TSoundBuffer;
     FSoundPos: Cardinal;
     FIsSoundEnabled: Boolean;
     FSoundVolume: Double; // 0.0 .. 1.0

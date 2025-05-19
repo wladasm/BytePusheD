@@ -3,7 +3,7 @@ unit unSound;
 interface
 
 uses
-  Classes, MMSystem;
+  Classes, SysUtils, MMSystem;
 
 type
   TSoundStreamerParams = record
@@ -13,14 +13,16 @@ type
     MaxBuffers: Integer;
   end;
 
-  PSoundBuffer = ^TSoundBuffer;
-  TSoundBuffer = record
-    Header: TWaveHdr;
-    Size: Cardinal;
-    Data: array of Byte;
+  TSoundBuffer = class(TObject)
+  private
+    FHeader: TWaveHdr;
+    FSize: Cardinal;
+    FData: TBytes;
+  public
+    property Size: Cardinal read FSize;
+    property Data: TBytes read FData;
   end;
 
-  // TODO: record -> class?
   TSoundStreamer = class(TObject)
   private
     FWaveOut: HWAVEOUT;
@@ -28,21 +30,21 @@ type
     FIsVolumeSupported: Boolean;
     FIsLRVolumeSupported: Boolean;
     FMaxBuffers: Integer;
-    FBuffers: TList; // of PSoundBuffer
+    FBuffers: TList; // of TSoundBuffer
     procedure OpenDevice(const AParams: TSoundStreamerParams);
     procedure CloseDevice;
     function Check(AErrorCode: MMRESULT): Boolean;
     procedure ShowError(AErrorCode: MMRESULT);
-    function FindDoneBuffer: PSoundBuffer;
-    procedure InitBuffer(ABuffer: PSoundBuffer; ASize: Cardinal);
+    function FindDoneBuffer: TSoundBuffer;
+    procedure InitBuffer(ABuffer: TSoundBuffer; ASize: Cardinal);
     procedure UnprepareBuffers;
     procedure FreeBuffers;
   public
     constructor Create(const AParams: TSoundStreamerParams);
     destructor Destroy; override;
-    function GetBuffer(ASize: Cardinal): PSoundBuffer;
-    procedure PlayBuffer(ABuffer: PSoundBuffer);
-    procedure CancelBuffer(ABuffer: PSoundBuffer);
+    function GetBuffer(ASize: Cardinal): TSoundBuffer;
+    procedure PlayBuffer(ABuffer: TSoundBuffer);
+    procedure CancelBuffer(ABuffer: TSoundBuffer);
     procedure StopPlaying;
     // not used now
     procedure SetDevVolume(const ALeftOrSingle, ARight: Single); // 0.0 .. 1.0
@@ -55,18 +57,18 @@ type
 implementation
 
 uses
-  Windows, SysUtils;
+  Windows;
 
 { TSoundStream }
 
-procedure TSoundStreamer.CancelBuffer(ABuffer: PSoundBuffer);
+procedure TSoundStreamer.CancelBuffer(ABuffer: TSoundBuffer);
 begin
   Assert(FBuffers.IndexOf(ABuffer) >= 0);
-  Assert((ABuffer.Header.dwFlags and WHDR_PREPARED) = 0);
-  Assert((ABuffer.Header.dwFlags and WHDR_DONE) = 0);
+  Assert((ABuffer.FHeader.dwFlags and WHDR_PREPARED) = 0);
+  Assert((ABuffer.FHeader.dwFlags and WHDR_DONE) = 0);
 
   // mark the buffer as free and ready for reuse
-  ABuffer.Header.dwFlags := WHDR_DONE;
+  ABuffer.FHeader.dwFlags := WHDR_DONE;
 end;
 
 function TSoundStreamer.Check(AErrorCode: MMRESULT): Boolean;
@@ -109,13 +111,13 @@ begin
   inherited;
 end;
 
-function TSoundStreamer.FindDoneBuffer: PSoundBuffer;
+function TSoundStreamer.FindDoneBuffer: TSoundBuffer;
 var
   i: Integer;
 begin
   Result := nil;
   for i := 0 to FBuffers.Count - 1 do
-    if (PSoundBuffer(FBuffers[i]).Header.dwFlags and WHDR_DONE) <> 0 then
+    if (TSoundBuffer(FBuffers[i]).FHeader.dwFlags and WHDR_DONE) <> 0 then
     begin
       Result := FBuffers[i];
       Exit;
@@ -125,19 +127,18 @@ end;
 procedure TSoundStreamer.FreeBuffers;
 var
   i: Integer;
-  lcBuffer: PSoundBuffer;
+  lcBuffer: TSoundBuffer;
 begin
   for i := FBuffers.Count - 1 downto 0 do
   begin
-    lcBuffer := PSoundBuffer(FBuffers[i]);
+    lcBuffer := FBuffers[i];
     FBuffers.Delete(i);
-    Assert((lcBuffer.Header.dwFlags and WHDR_PREPARED) = 0);
-    lcBuffer.Data := nil;
-    Dispose(lcBuffer);
+    Assert((lcBuffer.FHeader.dwFlags and WHDR_PREPARED) = 0);
+    lcBuffer.Free;
   end;
 end;
 
-function TSoundStreamer.GetBuffer(ASize: Cardinal): PSoundBuffer;
+function TSoundStreamer.GetBuffer(ASize: Cardinal): TSoundBuffer;
 begin
   Assert(ASize > 0);
 
@@ -151,15 +152,15 @@ begin
   if Result <> nil then
   begin
     // reuse a buffer that has finished playing
-    if (Result.Header.dwFlags and WHDR_PREPARED) <> 0 then
-      Check(waveOutUnprepareHeader(FWaveOut, @Result.Header, SizeOf(Result.Header)));
+    if (Result.FHeader.dwFlags and WHDR_PREPARED) <> 0 then
+      Check(waveOutUnprepareHeader(FWaveOut, @Result.FHeader, SizeOf(Result.FHeader)));
     InitBuffer(Result, ASize);
   end
   else
     if FBuffers.Count < FMaxBuffers then
     begin
       // allocate new buffer
-      New(Result);
+      Result := TSoundBuffer.Create;
       InitBuffer(Result, ASize);
       FBuffers.Add(Result);
     end
@@ -167,16 +168,16 @@ begin
       Result := nil; // buffer limit reached
 end;
 
-procedure TSoundStreamer.InitBuffer(ABuffer: PSoundBuffer; ASize: Cardinal);
+procedure TSoundStreamer.InitBuffer(ABuffer: TSoundBuffer; ASize: Cardinal);
 begin
-  ABuffer.Size := ASize;
-  if Cardinal(Length(ABuffer.Data)) <> ASize then
-    SetLength(ABuffer.Data, ASize);
+  ABuffer.FSize := ASize;
+  if Cardinal(Length(ABuffer.FData)) <> ASize then
+    SetLength(ABuffer.FData, ASize);
 
-  FillChar(ABuffer.Header, SizeOf(ABuffer.Header), 0);
-  with ABuffer.Header do
+  FillChar(ABuffer.FHeader, SizeOf(ABuffer.FHeader), 0);
+  with ABuffer.FHeader do
   begin
-    lpData := PAnsiChar(ABuffer.Data);
+    lpData := PAnsiChar(ABuffer.FData);
     dwBufferLength := ASize;
     dwFlags := 0;
   end;
@@ -209,11 +210,11 @@ begin
   FIsLRVolumeSupported := (lcDevCaps.dwSupport and WAVECAPS_LRVOLUME) <> 0;
 end;
 
-procedure TSoundStreamer.PlayBuffer(ABuffer: PSoundBuffer);
+procedure TSoundStreamer.PlayBuffer(ABuffer: TSoundBuffer);
 begin
   Assert(FBuffers.IndexOf(ABuffer) >= 0);
-  Assert((ABuffer.Header.dwFlags and WHDR_PREPARED) = 0);
-  Assert((ABuffer.Header.dwFlags and WHDR_DONE) = 0);
+  Assert((ABuffer.FHeader.dwFlags and WHDR_PREPARED) = 0);
+  Assert((ABuffer.FHeader.dwFlags and WHDR_DONE) = 0);
 
   if not FIsActive then
   begin
@@ -221,8 +222,8 @@ begin
     Exit;
   end;
 
-  Check(waveOutPrepareHeader(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
-  Check(waveOutWrite(FWaveOut, @ABuffer.Header, SizeOf(ABuffer.Header)));
+  Check(waveOutPrepareHeader(FWaveOut, @ABuffer.FHeader, SizeOf(ABuffer.FHeader)));
+  Check(waveOutWrite(FWaveOut, @ABuffer.FHeader, SizeOf(ABuffer.FHeader)));
 end;
 
 procedure TSoundStreamer.SetDevVolume(const ALeftOrSingle, ARight: Single);
@@ -267,16 +268,16 @@ end;
 procedure TSoundStreamer.UnprepareBuffers;
 var
   i: Integer;
-  lcBuffer: PSoundBuffer;
+  lcBuffer: TSoundBuffer;
 begin
   Assert(FIsActive);
 
   for i := 0 to FBuffers.Count - 1 do
   begin
-    lcBuffer := PSoundBuffer(FBuffers[i]);
-    if (lcBuffer.Header.dwFlags and WHDR_PREPARED) <> 0 then
+    lcBuffer := FBuffers[i];
+    if (lcBuffer.FHeader.dwFlags and WHDR_PREPARED) <> 0 then
       // unprepare and ignore possible errors
-      waveOutUnprepareHeader(FWaveOut, @lcBuffer.Header, SizeOf(lcBuffer.Header));
+      waveOutUnprepareHeader(FWaveOut, @lcBuffer.FHeader, SizeOf(lcBuffer.FHeader));
   end;
 end;
 
