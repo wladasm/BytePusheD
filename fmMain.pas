@@ -360,9 +360,12 @@ begin
 
   if IsBenchmarkingActive then
     FFrameCalcTime.Start;
-  FVM.CalcNextFrame;
-  if IsBenchmarkingActive then
-    FFrameCalcTime.Stop;
+  try
+    FVM.CalcNextFrame;
+  finally
+    if IsBenchmarkingActive then
+      FFrameCalcTime.Stop;
+  end;
 
   UpdateScreen;
 
@@ -377,13 +380,16 @@ procedure TMainForm.DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth,
 begin
   if IsBenchmarkingActive then
     FFrameDrawingTime.Start;
-  StretchDIBits(ADC, ADstX, ADstY, ADstWidth, ADstHeight,
-    0, 0, c_BytePusherScrWidth, c_BytePusherScrHeight,
-      FScreenPixels, PBitmapInfo(@FScreenBitmapInfo)^, DIB_RGB_COLORS, SRCCOPY);
-  if IsBenchmarkingActive then
-  begin
-    FFrameDrawingTime.Stop;
-    Inc(FFrameDrawCount);
+  try
+    StretchDIBits(ADC, ADstX, ADstY, ADstWidth, ADstHeight,
+      0, 0, c_BytePusherScrWidth, c_BytePusherScrHeight,
+        FScreenPixels, PBitmapInfo(@FScreenBitmapInfo)^, DIB_RGB_COLORS, SRCCOPY);
+  finally
+    if IsBenchmarkingActive then
+    begin
+      FFrameDrawingTime.Stop;
+      Inc(FFrameDrawCount);
+    end;
   end;
 end;
 
@@ -478,54 +484,55 @@ var
 begin
   if IsBenchmarkingActive then
     FSoundSystemTime.Start;
-
-  if not FSoundStreamer.IsActive then
-  begin
-    FreeSoundBuffer;
-    Exit;
-  end;
-
-  if FSoundBuffer = nil then
-  begin
-    Assert((c_SoundBufferSize mod c_BytePusherSoundBufSize) = 0);
-    FSoundBuffer := FSoundStreamer.GetBuffer(c_SoundBufferSize);
-    if FSoundBuffer = nil then
-      Exit; // max buffers allocated, no free one
-    FSoundPos := 0;
-  end;
-
-  lcVMSound := FVM.GetSoundBuf;
-  Assert((FSoundBuffer.Size - FSoundPos) >= c_BytePusherSoundBufSize);
-  Assert((FSoundVolume >= 0.0) and (FSoundVolume <= 1.0));
-  if FIsSoundEnabled then
-  begin
-    // volume > 0
-    for i := 0 to c_BytePusherSoundBufSize - 1 do
+  try
+    if not FSoundStreamer.IsActive then
     begin
-      lcSample := Round(ShortInt(lcVMSound[i]) * FSoundVolume) + $80 {signed sample -> unsigned};
-      FSoundBuffer.Data[FSoundPos] := lcSample;
-      Inc(FSoundPos);
+      FreeSoundBuffer;
+      Exit;
     end;
-  end
-  else begin
-    // volume = 0, little optimization
-    FillChar(FSoundBuffer.Data[FSoundPos], c_BytePusherSoundBufSize, $80 {silence} );
-    Inc(FSoundPos, c_BytePusherSoundBufSize);
-  end;
 
-  if FSoundPos = FSoundBuffer.Size then
-  begin
-    if FIsRunning and FIsSoundEnabled then
+    if FSoundBuffer = nil then
     begin
-      FSoundStreamer.PlayBuffer(FSoundBuffer);
-      FSoundBuffer := nil;
-    end
-    else
-      FSoundPos := 0; // in "next frame" mode don't play sound, just clear buffer
-  end;
+      Assert((c_SoundBufferSize mod c_BytePusherSoundBufSize) = 0);
+      FSoundBuffer := FSoundStreamer.GetBuffer(c_SoundBufferSize);
+      if FSoundBuffer = nil then
+        Exit; // max buffers allocated, no free one
+      FSoundPos := 0;
+    end;
 
-  if IsBenchmarkingActive then
-    FSoundSystemTime.Stop;
+    lcVMSound := FVM.GetSoundBuf;
+    Assert((FSoundBuffer.Size - FSoundPos) >= c_BytePusherSoundBufSize);
+    Assert((FSoundVolume >= 0.0) and (FSoundVolume <= 1.0));
+    if FIsSoundEnabled then
+    begin
+      // volume > 0
+      for i := 0 to c_BytePusherSoundBufSize - 1 do
+      begin
+        lcSample := Round(ShortInt(lcVMSound[i]) * FSoundVolume) + $80 {signed sample -> unsigned};
+        FSoundBuffer.Data[FSoundPos] := lcSample;
+        Inc(FSoundPos);
+      end;
+    end
+    else begin
+      // volume = 0, little optimization
+      FillChar(FSoundBuffer.Data[FSoundPos], c_BytePusherSoundBufSize, $80 {silence} );
+      Inc(FSoundPos, c_BytePusherSoundBufSize);
+    end;
+
+    if FSoundPos = FSoundBuffer.Size then
+    begin
+      if FIsRunning and FIsSoundEnabled then
+      begin
+        FSoundStreamer.PlayBuffer(FSoundBuffer);
+        FSoundBuffer := nil;
+      end
+      else
+        FSoundPos := 0; // in "next frame" mode don't play sound, just clear buffer
+    end;
+  finally
+    if IsBenchmarkingActive then
+      FSoundSystemTime.Stop;
+  end;
 end;
 
 procedure TMainForm.pnlScreenResize(Sender: TObject);
@@ -668,14 +675,17 @@ var
 begin
   if IsBenchmarkingActive then
     FFrameRenderTime.Start;
-  lcScreenBuf := FVM.GetScreenBuf;
-  // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
-  // Since we have 256 bytes per line, this requirement is already met.
-  Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
-  Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
-  Move(lcScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
-  if IsBenchmarkingActive then
-    FFrameRenderTime.Stop;
+  try
+    lcScreenBuf := FVM.GetScreenBuf;
+    // Remember: all scanlines in the DIB (FScreenPixels) must be 4-byte aligned.
+    // Since we have 256 bytes per line, this requirement is already met.
+    Assert(((c_BytePusherScrWidth * SizeOf(Byte)) mod 4) = 0);
+    Assert(SizeOf(FScreenPixels^) = c_BytePusherScrBufSize);
+    Move(lcScreenBuf^, FScreenPixels^, c_BytePusherScrBufSize);
+  finally
+    if IsBenchmarkingActive then
+      FFrameRenderTime.Stop;
+  end;
 
   pbScreen.Invalidate;
 end;
