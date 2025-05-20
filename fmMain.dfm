@@ -76,8 +76,8 @@ object MainForm: TMainForm
   object odSnapshot: TOpenDialog
     DefaultExt = 'BytePusher'
     Filter = 
-      'BytePusher snapshot files (*.BytePusher)|*.BytePusher|All files ' +
-      '(*.*)|*.*'
+      'BytePusher snapshot files (*.BytePusher;*.bp)|*.BytePusher;*.bp|' +
+      'All files (*.*)|*.*'
     Options = [ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
     Left = 16
     Top = 80
