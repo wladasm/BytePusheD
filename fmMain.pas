@@ -427,6 +427,9 @@ begin
   SetIsRunning(False);
   UpdateActions;
   UpdateStatus;
+  {$IFDEF DEBUG}
+  acBenchmarks.Checked := True;
+  {$ENDIF}
   UpdateBenchmarks;
 
   AutoLoadFile;

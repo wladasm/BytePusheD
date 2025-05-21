@@ -170,7 +170,6 @@ object MainForm: TMainForm
     object acBenchmarks: TAction
       AutoCheck = True
       Caption = 'Show &benchmarks'
-      Checked = True
       OnExecute = acBenchmarksExecute
     end
     object acAbout: TAction
