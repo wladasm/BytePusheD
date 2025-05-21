@@ -2,7 +2,7 @@
 		<PropertyGroup>
 			<ProjectGuid>{DA26E20A-B434-440E-8584-CC71919F39F5}</ProjectGuid>
 			<ProjectVersion>12.0</ProjectVersion>
-			<MainSource>BytePusher.dpr</MainSource>
+			<MainSource>BytePusheD.dpr</MainSource>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
 		</PropertyGroup>
@@ -22,7 +22,7 @@
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_DcuOutput>DCU</DCC_DcuOutput>
 			<DCC_UnitAlias>WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;$(DCC_UnitAlias)</DCC_UnitAlias>
-			<DCC_DependencyCheckOutputName>BytePusher.exe</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>BytePusheD.exe</DCC_DependencyCheckOutputName>
 			<DCC_K>false</DCC_K>
 			<DCC_F>false</DCC_F>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
@@ -43,7 +43,7 @@
 			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<ItemGroup>
-			<DelphiCompile Include="BytePusher.dpr">
+			<DelphiCompile Include="BytePusheD.dpr">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<DCCReference Include="fmMain.pas">
@@ -71,7 +71,7 @@
 			<BorlandProject>
 				<Delphi.Personality>
 					<Source>
-						<Source Name="MainSource">BytePusher.dpr</Source>
+						<Source Name="MainSource">BytePusheD.dpr</Source>
 					</Source>
 					<Parameters>
 						<Parameters Name="UseLauncher">False</Parameters>
