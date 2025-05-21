@@ -106,6 +106,7 @@ type
     procedure CreateBenchmarkTimers;
     procedure FreeBenchmarkTimers;
     procedure CreateVolumeMenu;
+    procedure AutoLoadFile;
     procedure UpdateScreen;
     procedure DrawScreen(ADC: HDC; ADstX, ADstY, ADstWidth, ADstHeight: Integer);
     procedure DoVMFrame;
@@ -216,6 +217,20 @@ begin
     Sleep(1);
 
   Done := False;
+end;
+
+procedure TMainForm.AutoLoadFile;
+var
+  lcFileToLoad: string;
+begin
+  {$IFDEF DEBUG}
+  lcFileToLoad := 'Snapshots\Sprites.BytePusher';
+  {$ENDIF}
+
+  if ParamCount > 0 then
+    lcFileToLoad := ParamStr(1);
+  if (lcFileToLoad <> '') and FileExists(lcFileToLoad) then
+    LoadSnapshot(lcFileToLoad, True);
 end;
 
 procedure TMainForm.CreateBenchmarkTimers;
@@ -414,10 +429,7 @@ begin
   UpdateStatus;
   UpdateBenchmarks;
 
-  {$IFDEF DEBUG}
-  if FileExists('Snapshots\Sprites.BytePusher') then
-    LoadSnapshot('Snapshots\Sprites.BytePusher', True);
-  {$ENDIF}
+  AutoLoadFile;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
