@@ -16,6 +16,7 @@ begin
 
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
+  Application.Title := 'BytePusheD';
   Application.CreateForm(TMainForm, MainForm);
   Application.Run;
 end.
