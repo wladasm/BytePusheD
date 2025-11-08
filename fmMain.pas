@@ -9,7 +9,7 @@ uses
 
 const
   c_ProgramName = 'BytePusheD';
-  c_ProgramVersion = '0.01';
+  c_ProgramVersion = '1.0';
   c_ProgramYear = '2025';
   c_ProgramCopyright = 'Dan Peroff';
 
