@@ -7,6 +7,7 @@
 ![Build](https://img.shields.io/badge/build-manual-lightgrey)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue)
+[![Visitors](https://api.visitorbadge.io/api/combined?path=https%3A%2F%2Fgithub.com%2Fwladasm%2FBytePusheD.git&countColor=%23ba68c8&style=flat)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fwladasm%2FBytePusheD.git)
 
 _BytePusheD: Where Delphi powers the bytes._
 
